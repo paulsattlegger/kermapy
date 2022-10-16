@@ -3,11 +3,11 @@ import itertools
 import json
 import logging
 
-from src.kermapy.constants import LISTEN_ADDR
-from src.kermapy.exceptions import ProtocolError
-from src.kermapy.messages import HELLO, GET_PEERS
-from src.kermapy.org.webpki.json.Canonicalize import canonicalize
-from src.kermapy.peers import parse_peers, update_peers
+from constants import LISTEN_ADDR
+from exceptions import ProtocolError
+from messages import HELLO, GET_PEERS
+from org.webpki.json.Canonicalize import canonicalize
+from peers import parse_peers, update_peers
 
 
 async def write_message(message: dict, writer: asyncio.StreamWriter):

@@ -1,7 +1,7 @@
 import json
 import pathlib
 
-from src.kermapy.constants import PEERS, BOOTSTRAP_NODES
+from constants import PEERS, BOOTSTRAP_NODES
 
 
 def parse_peers() -> dict:

@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-from src.kermapy import client
-from src.kermapy import server
+import client
+import server
 
 background_tasks = set()
 
