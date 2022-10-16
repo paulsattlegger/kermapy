@@ -1,23 +1,36 @@
 import asyncio
 import json
+import logging
 import pathlib
 
 from config import PEERS, BOOTSTRAP_NODES
 
 
-async def add_peer(peer: tuple[str, int]):
-    host, port = peer
-    key = host + ":" + str(port)
-    peers_dict[key] = ""
-    if peer not in peers_dict:
-        await peers_queue.put(key)
-        dump_peers()
-
-
-def remove_peer(peer: tuple[str, int]):
-    host, port = peer
-    del peers_dict[host + ":" + str(port)]
+async def add_peers(peers: list[str]):
+    logging.info(f"Discovered peers {peers}")
+    for peer in peers:
+        await add_peer(peer)
     dump_peers()
+
+
+async def add_peer(peer: str | tuple[str, int]):
+    if isinstance(peer, str):
+        key = peer
+    else:
+        host, port = peer
+        key = host + ":" + str(port)
+    if key not in peers_dict:
+        peers_dict[key] = ""
+        await peers_queue.put(key)
+
+
+def remove_peer(peer: str | tuple[str, int]):
+    if isinstance(peer, str):
+        key = peer
+    else:
+        host, port = peer
+        key = host + ":" + str(port)
+    del peers_dict[key]
 
 
 def parse_peers() -> dict:
@@ -34,7 +47,11 @@ def dump_peers():
         json.dump(peers_dict, fp, indent=4)
 
 
+def main():
+    for peer in peers_dict:
+        peers_queue.put_nowait(peer)
+
+
 peers_dict = parse_peers()
 peers_queue = asyncio.Queue()
-for p in peers_dict:
-    peers_queue.put_nowait(p)
+main()

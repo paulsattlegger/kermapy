@@ -6,7 +6,7 @@ from config import LISTEN_ADDR, PEER_DISCOVERY_INTERVAL, CLIENT_WORKERS
 from exceptions import ProtocolError
 from messages import HELLO, GET_PEERS
 from org.webpki.json.Canonicalize import canonicalize
-from peers import peers_dict, peers_queue, add_peer, remove_peer
+from peers import peers_dict, peers_queue, add_peers
 
 
 async def write_message(message: dict, writer: asyncio.StreamWriter):
@@ -49,8 +49,7 @@ async def handle_message(message: dict) -> dict:
     if message["type"] == "getpeers":
         return {"type": "peers", "peers": [peer for peer in peers_dict]}
     elif message["type"] == "peers":
-        for peer in message["peers"]:
-            await add_peer(peer)
+        await add_peers(message["peers"])
     elif message["type"] in {"getobject", "ihaveobject", "object", "getmempool", "mempool", "getchaintip", "chaintip"}:
         pass
     else:
@@ -116,7 +115,6 @@ async def connect():
             reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
             await handle_connection(reader, writer)
         except OSError as error:
-            remove_peer(peer)
             logging.error(f"Connection to {peer} failed: {error}")
 
 
