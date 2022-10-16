@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 
-from constants import LISTEN_ADDR, PEER_DISCOVERY_INTERVAL, CLIENT_WORKERS
+from config import LISTEN_ADDR, PEER_DISCOVERY_INTERVAL, CLIENT_WORKERS
 from exceptions import ProtocolError
 from messages import HELLO, GET_PEERS
 from org.webpki.json.Canonicalize import canonicalize

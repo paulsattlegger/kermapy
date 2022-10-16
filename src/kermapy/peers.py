@@ -2,7 +2,7 @@ import asyncio
 import json
 import pathlib
 
-from constants import PEERS, BOOTSTRAP_NODES
+from config import PEERS, BOOTSTRAP_NODES
 
 
 async def add_peer(peer: tuple[str, int]):
