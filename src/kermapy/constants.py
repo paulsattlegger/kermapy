@@ -1,6 +1,6 @@
 BOOTSTRAP_NODES = {
     "128.130.122.101:18018": {
-        "active": "true"
+        "active": True
     }
 }
 LISTEN_ADDR = "0.0.0.0:18018"
