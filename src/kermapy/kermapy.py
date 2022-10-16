@@ -53,7 +53,7 @@ async def handle_message(message: dict) -> dict:
     elif message["type"] in {"getobject", "ihaveobject", "object", "getmempool", "mempool", "getchaintip", "chaintip"}:
         pass
     else:
-        raise ProtocolError(f"Message type '{message['type']} unsupported'", message)
+        raise ProtocolError(f"Message type must not be '{message['type']}'", message)
 
 
 def handle_error(error: ProtocolError) -> dict:
