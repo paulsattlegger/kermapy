@@ -18,9 +18,9 @@ async def write_message(message: dict, writer: asyncio.StreamWriter):
     await writer.drain()
 
 
-async def read_message(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> dict:
+async def read_message(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, timeout=3) -> dict:
     peer_name = writer.get_extra_info("peername")
-    data = await reader.readline()
+    data = await asyncio.wait_for(reader.readline(), timeout)
     logging.debug(f"Received {data!r} from {peer_name}")
     return parse_message(data)
 
@@ -70,6 +70,8 @@ async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.Stream
             message = handle_message(num, message)
             if message:
                 await write_message(message, writer)
+    except asyncio.TimeoutError:
+        logging.debug(f"Connection with {peer_name} idling too long")
     except json.decoder.JSONDecodeError as error:
         logging.error(f"Unable to parse message {error.doc!r} from {peer_name}: {error.msg!r}")
     except ProtocolError as error:
