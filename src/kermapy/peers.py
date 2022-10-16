@@ -12,9 +12,15 @@ def parse_peers() -> dict:
     return BOOTSTRAP_NODES
 
 
-def update_peers(new_peers: list):
-    discovered_peers = parse_peers()
-    peers = {**discovered_peers, **{peer: "" for peer in new_peers}}
+def dump_peers(peers: dict):
     path = pathlib.Path(PEERS)
     with path.open("w") as fp:
         json.dump(peers, fp, indent=4)
+
+
+def update_peers(new_peers: list):
+    peers = parse_peers()
+    for new_peer in new_peers:
+        peers.setdefault(new_peer, {})
+        peers[new_peer]["active"] = True
+    dump_peers(peers)

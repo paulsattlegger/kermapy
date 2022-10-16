@@ -1,5 +1,7 @@
 BOOTSTRAP_NODES = {
-    "128.130.122.101:18018": ""
+    "128.130.122.101:18018": {
+        "active": "true"
+    }
 }
 LISTEN_ADDR = "0.0.0.0:18018"
 PEERS = "../../data/peers.json"
