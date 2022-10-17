@@ -1,10 +1,15 @@
 import asyncio
 import json
 import logging
+from json import JSONDecodeError
 
+from jsonschema.exceptions import ValidationError
+from jsonschema.validators import validate
+
+import messages
+import schemas
 from config import LISTEN_ADDR, PEER_DISCOVERY_INTERVAL, CLIENT_WORKERS
 from exceptions import ProtocolError
-from messages import HELLO, GET_PEERS
 from org.webpki.json.Canonicalize import canonicalize
 from peers import peers_dict, peers_queue, add_peers
 
@@ -33,31 +38,31 @@ def dump_message(message: dict) -> bytes:
 
 
 def handle_hello_message(message: dict):
-    if "type" not in message:
-        raise ProtocolError("Mandatory key 'type' not found", message)
-    if message["type"] != "hello":
-        raise ProtocolError("Initial message must be type 'hello'", message)
-    if "version" not in message:
-        raise ProtocolError("Mandatory key 'version' not found", message)
-    if message["type"] != "hello" or message["version"] != "0.8.0":
-        raise ProtocolError("Message type not 'hello' or version not '0.8.0'", message)
+    validate(message, schemas.HELLO_MESSAGE)
 
 
 async def handle_message(message: dict) -> dict:
-    if "type" not in message:
-        raise ProtocolError("Mandatory key 'type' not found", message)
-    if message["type"] == "getpeers":
-        return {"type": "peers", "peers": [peer for peer in peers_dict]}
-    elif message["type"] == "peers":
-        await add_peers(message["peers"])
-    elif message["type"] in {"getobject", "ihaveobject", "object", "getmempool", "mempool", "getchaintip", "chaintip"}:
-        pass
+    validate(message, schemas.MESSAGE)
+    match message["type"]:
+        case "getpeers":
+            return {"type": "peers", "peers": [peer for peer in peers_dict]}
+        case "peers":
+            validate(message, schemas.PEERS_MESSAGE)
+            await add_peers(message["peers"])
+        case "hello":
+            raise ProtocolError("Received a second 'hello' message, even though handshake is completed", message)
+
+
+def handle_error(error: Exception) -> dict:
+    if isinstance(error, JSONDecodeError):
+        msg = f"Failed to parse incoming message as JSON: {error.doc!r}"
+    elif isinstance(error, ValidationError):
+        msg = f"The received message does not match one of the known message formats: {error.message!r}"
+    elif isinstance(error, ProtocolError):
+        msg = str(error.msg)
     else:
-        raise ProtocolError(f"Message type must not be '{message['type']}'", message)
-
-
-def handle_error(error: ProtocolError) -> dict:
-    return {"type": "error", "error": str(error.msg)}
+        msg = str(error)
+    return {"type": "error", "error": msg}
 
 
 async def handle_connection_reader(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -69,7 +74,7 @@ async def handle_connection_reader(reader: asyncio.StreamReader, writer: asyncio
 
 async def handle_connection_writer(writer: asyncio.StreamWriter):
     while True:
-        await write_message(GET_PEERS, writer)
+        await write_message(messages.GET_PEERS, writer)
         await asyncio.sleep(PEER_DISCOVERY_INTERVAL)
 
 
@@ -78,14 +83,12 @@ async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.Stream
     logging.info(f"Connection with {peer_name}")
 
     try:
-        await write_message(HELLO, writer)
+        await write_message(messages.HELLO, writer)
         message = await read_message(reader, writer)
         handle_hello_message(message)
         await asyncio.gather(handle_connection_reader(reader, writer), handle_connection_writer(writer))
-    except json.decoder.JSONDecodeError as error:
-        logging.error(f"Unable to parse message {error.doc!r} from {peer_name}: {error.msg!r}")
-    except ProtocolError as error:
-        logging.error(f"Unable to handle message {error.doc!r} from {peer_name}: {error.msg!r}")
+    except (ValidationError, ProtocolError, JSONDecodeError) as error:
+        logging.error(f"Unable to handle message from {peer_name}: {error}")
         message = handle_error(error)
         await write_message(message, writer)
     logging.info(f"Close the connection with {peer_name}")
