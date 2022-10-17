@@ -38,19 +38,19 @@ def dump_message(message: dict) -> bytes:
 
 
 def handle_hello_message(message: dict):
-    validate(message, schemas.HELLO_MESSAGE)
+    validate(message, schemas.MESSAGE)
+    if message["type"] != "hello":
+        raise ProtocolError("Initial message type must be 'hello'", message)
 
 
 async def handle_message(message: dict) -> dict:
     validate(message, schemas.MESSAGE)
-    match message["type"]:
-        case "getpeers":
-            return {"type": "peers", "peers": [peer for peer in peers_dict]}
-        case "peers":
-            validate(message, schemas.PEERS_MESSAGE)
-            await add_peers(message["peers"])
-        case "hello":
-            raise ProtocolError("Received a second 'hello' message, even though handshake is completed", message)
+    if message["type"] == "getpeers":
+        return {"type": "peers", "peers": [peer for peer in peers_dict]}
+    elif message["type"] == "peers":
+        await add_peers(message["peers"])
+    elif message["type"] == "hello":
+        raise ProtocolError("Received a second 'hello' message, even though handshake is completed", message)
 
 
 def handle_error(error: Exception) -> dict:
