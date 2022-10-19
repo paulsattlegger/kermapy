@@ -20,7 +20,7 @@ class Connection:
         self.writer: asyncio.StreamWriter = writer
         self.incoming: bool = incoming
         self.peer_name: str = "{}:{}".format(*writer.get_extra_info("peername"))
-        logging.info(f"Connection {'from' if incoming else 'to'} {self.peer_name} established")
+        logging.info(f"Established connection {'from' if incoming else 'to'} {self.peer_name}")
 
     async def run(self) -> None:
         await self.write_message(messages.HELLO)
@@ -30,27 +30,27 @@ class Connection:
             message = await self.read_message()
             validate(message, schemas.MESSAGE)
             if message["type"] != "hello":
-                raise ProtocolError(f"Received message {message} prior to 'hello'", message)
-            logging.info(f"Handshake with {self.peer_name} completed")
+                raise ProtocolError(f"Received message {message} prior to 'hello'")
+            logging.info(f"Completed handshake with {self.peer_name}")
             # Request-response loop
             while True:
                 request = await self.read_message()
                 validate(request, schemas.MESSAGE)
-                logging.info(f"Received {request['type']} message from {self.peer_name}")
+                logging.info(f"Received message {message} from {self.peer_name}")
                 if response := await handle_message(request):
                     await self.write_message(response)
         except JSONDecodeError as e:
-            logging.error(f"Unable to handle message {e.doc} from {self.peer_name}: {e}")
+            logging.error(f"Unable to parse message {e.doc} from {self.peer_name}: {e}")
             response = {
                 "type": "error",
                 "error": f"Failed to parse incoming message as JSON: {e.doc}"
             }
             await self.write_message(response)
         except ValidationError as e:
-            logging.error(f"Unable to handle message from {self.peer_name}: {e}")
+            logging.error(f"Unable to validate message from {self.peer_name}: {e}")
             response = {
                 "type": "error",
-                "error": f"The received message does not match one of the known message formats: {e.message}"
+                "error": f"Failed to validate incoming message: {e.message}"
             }
             await self.write_message(response)
         except ProtocolError as e:
@@ -63,7 +63,7 @@ class Connection:
         self.close()
 
     def close(self) -> None:
-        logging.info(f"Close the connection {'from' if self.incoming else 'to'} {self.peer_name}")
+        logging.info(f"Closing the connection {'from' if self.incoming else 'to'} {self.peer_name}")
         self.writer.close()
 
     async def write_message(self, message: dict) -> None:
@@ -119,9 +119,10 @@ async def connect():
     while peer := await peers.queue.get():
         try:
             try:
+                logging.info(f"Connecting to {peer}")
                 reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
             except OSError as e:
-                logging.error(f"Connection to {peer} failed: {e}")
+                logging.error(f"Failed connecting to {peer}: {e}")
                 continue
             connection = Connection(reader, writer, False)
             try:
