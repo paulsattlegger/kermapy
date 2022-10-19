@@ -16,8 +16,8 @@ from peers import Peers
 
 class Connection:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, incoming: bool) -> None:
-        self.reader: asyncio.StreamReader = reader
-        self.writer: asyncio.StreamWriter = writer
+        self._reader: asyncio.StreamReader = reader
+        self._writer: asyncio.StreamWriter = writer
         self.incoming: bool = incoming
         self.peer_name: str = "{}:{}".format(*writer.get_extra_info("peername"))
         logging.info(f"Established connection {'from' if incoming else 'to'} {self.peer_name}")
@@ -64,16 +64,16 @@ class Connection:
 
     def close(self) -> None:
         logging.info(f"Closing the connection {'from' if self.incoming else 'to'} {self.peer_name}")
-        self.writer.close()
+        self._writer.close()
 
     async def write_message(self, message: dict) -> None:
         data = canonicalize(message) + b"\n"
         logging.debug(f"Sending {data!r} to {self.peer_name}")
-        self.writer.write(data)
-        await self.writer.drain()
+        self._writer.write(data)
+        await self._writer.drain()
 
     async def read_message(self) -> dict:
-        data = await self.reader.readline()
+        data = await self._reader.readline()
         logging.debug(f"Received {data!r} from {self.peer_name}")
         return json.loads(data)
 
@@ -86,6 +86,7 @@ async def handle_message(message: dict) -> dict:
         }
     elif message["type"] == "peers":
         await peers.add_all(message["peers"])
+        peers.dump()
     elif message["type"] == "hello":
         raise ProtocolError("Received a second 'hello' message, even though handshake is completed")
 
@@ -116,7 +117,7 @@ async def connect():
       - Store all learned nodes in a dict (synchronized to PEERS file)
     """
     # Queue is used as a circular-queue
-    while peer := await peers.queue.get():
+    while peer := await peers.get():
         try:
             try:
                 logging.info(f"Connecting to {peer}")
@@ -130,7 +131,7 @@ async def connect():
             except OSError as e:
                 logging.error(e)
         finally:
-            await peers.queue.put(peer)
+            await peers.put(peer)
 
 
 async def main():
