@@ -1,57 +1,48 @@
 import asyncio
 import json
-import logging
 import pathlib
+from typing import Iterator
 
-from config import PEERS, BOOTSTRAP_NODES
-
-
-async def add_peers(peers: list[str]):
-    logging.info(f"Discovered peers {peers}")
-    for peer in peers:
-        await add_peer(peer)
-    dump_peers()
+from config import BOOTSTRAP_NODES
 
 
-async def add_peer(peer: str | tuple[str, int]):
-    if isinstance(peer, str):
-        key = peer
-    else:
-        host, port = peer
-        key = host + ":" + str(port)
-    if key not in peers_dict:
-        peers_dict[key] = ""
-        await peers_queue.put(key)
+class Peers:
+    def __init__(self, path: str) -> None:
+        self.dict: dict[str] = {}
+        self.queue: asyncio.Queue = asyncio.Queue()
+        self.path: pathlib.Path = pathlib.Path(path)
+        self.load()
 
+    def __iter__(self) -> Iterator[str]:
+        return self.dict.__iter__()
 
-def remove_peer(peer: str | tuple[str, int]):
-    if isinstance(peer, str):
-        key = peer
-    else:
-        host, port = peer
-        key = host + ":" + str(port)
-    del peers_dict[key]
+    async def add(self, peer: str) -> None:
+        if peer not in self.dict:
+            self.dict[peer] = ""
+            await self.queue.put(peer)
+            self.dump()
 
+    async def add_all(self, peers: list[str]) -> None:
+        for peer in peers:
+            self.dict[peer] = ""
+            await self.queue.put(peer)
+        self.dump()
 
-def parse_peers() -> dict:
-    path = pathlib.Path(PEERS)
-    if path.exists():
-        with path.open() as fp:
-            return json.load(fp)
-    return BOOTSTRAP_NODES
+    def remove(self, peer: str) -> None:
+        if peer in self.dict:
+            del self.dict[peer]
+            self.dump()
 
+    def dump(self) -> None:
+        with self.path.open("w") as fp:
+            json.dump(self.dict, fp, indent=4)
 
-def dump_peers():
-    path = pathlib.Path(PEERS)
-    with path.open("w") as fp:
-        json.dump(peers_dict, fp, indent=4)
-
-
-def main():
-    for peer in peers_dict:
-        peers_queue.put_nowait(peer)
-
-
-peers_dict = parse_peers()
-peers_queue = asyncio.Queue()
-main()
+    def load(self) -> None:
+        if self.path.exists():
+            with self.path.open() as fp:
+                peers = json.load(fp)
+        else:
+            peers = BOOTSTRAP_NODES
+        for peer in peers:
+            self.queue.put_nowait(peer)
+        self.dict = peers

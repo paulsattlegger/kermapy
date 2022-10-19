@@ -8,91 +8,94 @@ from jsonschema.validators import validate
 
 import messages
 import schemas
-from config import LISTEN_ADDR, PEER_DISCOVERY_INTERVAL, CLIENT_WORKERS
+from config import LISTEN_ADDR, CLIENT_WORKERS, PEERS
 from exceptions import ProtocolError
 from org.webpki.json.Canonicalize import canonicalize
-from peers import peers_dict, peers_queue, add_peers
+from peers import Peers
 
 
-async def write_message(message: dict, writer: asyncio.StreamWriter):
-    peer_name = writer.get_extra_info("peername")
-    data = dump_message(message)
-    logging.debug(f"Sending {data!r} to {peer_name}")
-    writer.write(data)
-    await writer.drain()
+class Connection:
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, incoming: bool) -> None:
+        self.reader: asyncio.StreamReader = reader
+        self.writer: asyncio.StreamWriter = writer
+        self.incoming: bool = incoming
+        self.peer_name: str = "{}:{}".format(*writer.get_extra_info("peername"))
+        logging.info(f"Connection {'from' if incoming else 'to'} {self.peer_name} established")
 
+    async def run(self) -> None:
+        await self.write_message(messages.HELLO)
+        await self.write_message(messages.GET_PEERS)
+        try:
+            # Handshake
+            message = await self.read_message()
+            validate(message, schemas.MESSAGE)
+            if message["type"] != "hello":
+                raise ProtocolError(f"Received message {message} prior to 'hello'", message)
+            logging.info(f"Handshake with {self.peer_name} completed")
+            # Request-response loop
+            while True:
+                request = await self.read_message()
+                validate(request, schemas.MESSAGE)
+                logging.info(f"Received {request['type']} message from {self.peer_name}")
+                if response := await handle_message(request):
+                    await self.write_message(response)
+        except JSONDecodeError as e:
+            logging.error(f"Unable to handle message {e.doc} from {self.peer_name}: {e}")
+            response = {
+                "type": "error",
+                "error": f"Failed to parse incoming message as JSON: {e.doc}"
+            }
+            await self.write_message(response)
+        except ValidationError as e:
+            logging.error(f"Unable to handle message from {self.peer_name}: {e}")
+            response = {
+                "type": "error",
+                "error": f"The received message does not match one of the known message formats: {e.message}"
+            }
+            await self.write_message(response)
+        except ProtocolError as e:
+            logging.error(f"Unable to handle message from {self.peer_name}: {e}")
+            response = {
+                "type": "error",
+                "error": str(e)
+            }
+            await self.write_message(response)
+        self.close()
 
-async def read_message(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> dict:
-    peer_name = writer.get_extra_info("peername")
-    data = await reader.readline()
-    logging.debug(f"Received {data!r} from {peer_name}")
-    return parse_message(data)
+    def close(self) -> None:
+        logging.info(f"Close the connection {'from' if self.incoming else 'to'} {self.peer_name}")
+        self.writer.close()
 
+    async def write_message(self, message: dict) -> None:
+        data = canonicalize(message) + b"\n"
+        logging.debug(f"Sending {data!r} to {self.peer_name}")
+        self.writer.write(data)
+        await self.writer.drain()
 
-def parse_message(data: bytes) -> dict:
-    return json.loads(data)
-
-
-def dump_message(message: dict) -> bytes:
-    return canonicalize(message) + b"\n"
-
-
-def handle_hello_message(message: dict):
-    validate(message, schemas.MESSAGE)
-    if message["type"] != "hello":
-        raise ProtocolError("Initial message type must be 'hello'", message)
+    async def read_message(self) -> dict:
+        data = await self.reader.readline()
+        logging.debug(f"Received {data!r} from {self.peer_name}")
+        return json.loads(data)
 
 
 async def handle_message(message: dict) -> dict:
-    validate(message, schemas.MESSAGE)
     if message["type"] == "getpeers":
-        return {"type": "peers", "peers": [peer for peer in peers_dict]}
+        return {
+            "type": "peers",
+            "peers": [peer for peer in peers]
+        }
     elif message["type"] == "peers":
-        await add_peers(message["peers"])
+        await peers.add_all(message["peers"])
     elif message["type"] == "hello":
-        raise ProtocolError("Received a second 'hello' message, even though handshake is completed", message)
+        raise ProtocolError("Received a second 'hello' message, even though handshake is completed")
 
 
-def handle_error(error: Exception) -> dict:
-    if isinstance(error, JSONDecodeError):
-        msg = f"Failed to parse incoming message as JSON: {error.doc!r}"
-    elif isinstance(error, ValidationError):
-        msg = f"The received message does not match one of the known message formats: {error.message!r}"
-    elif isinstance(error, ProtocolError):
-        msg = str(error.msg)
-    else:
-        msg = str(error)
-    return {"type": "error", "error": msg}
-
-
-async def handle_connection_reader(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-    while True:
-        message = await read_message(reader, writer)
-        if message := await handle_message(message):
-            await write_message(message, writer)
-
-
-async def handle_connection_writer(writer: asyncio.StreamWriter):
-    while True:
-        await write_message(messages.GET_PEERS, writer)
-        await asyncio.sleep(PEER_DISCOVERY_INTERVAL)
-
-
-async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-    peer_name = writer.get_extra_info("peername")
-    logging.info(f"Connection with {peer_name}")
-
+async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    connection = Connection(reader, writer, True)
     try:
-        await write_message(messages.HELLO, writer)
-        message = await read_message(reader, writer)
-        handle_hello_message(message)
-        await asyncio.gather(handle_connection_reader(reader, writer), handle_connection_writer(writer))
-    except (ValidationError, ProtocolError, JSONDecodeError) as error:
-        logging.error(f"Unable to handle message from {peer_name}: {error}")
-        message = handle_error(error)
-        await write_message(message, writer)
-    logging.info(f"Close the connection with {peer_name}")
-    writer.close()
+        await connection.run()
+    except OSError as e:
+        logging.error(e)
 
 
 async def serve():
@@ -112,13 +115,21 @@ async def connect():
       - Keep connection with up to CLIENT_WORKERS, i.e., if a connection is terminated issue a new one (to another addr)
       - Store all learned nodes in a dict (synchronized to PEERS file)
     """
-    while peer := await peers_queue.get():
+    # Queue is used as a circular-queue
+    while peer := await peers.queue.get():
         try:
-            logging.info(f"Connecting to {peer}")
-            reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
-            await handle_connection(reader, writer)
-        except OSError as error:
-            logging.error(f"Connection to {peer} failed: {error}")
+            try:
+                reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
+            except OSError as e:
+                logging.error(f"Connection to {peer} failed: {e}")
+                continue
+            connection = Connection(reader, writer, False)
+            try:
+                await connection.run()
+            except OSError as e:
+                logging.error(e)
+        finally:
+            await peers.queue.put(peer)
 
 
 async def main():
@@ -126,5 +137,6 @@ async def main():
 
 
 if __name__ == "__main__":
+    peers: Peers = Peers(PEERS)
     logging.basicConfig(level=logging.DEBUG)
     asyncio.run(main())
