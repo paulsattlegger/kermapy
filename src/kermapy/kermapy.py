@@ -116,22 +116,18 @@ async def connect():
       - Keep connection with up to CLIENT_WORKERS, i.e., if a connection is terminated issue a new one (to another addr)
       - Store all learned nodes in a dict (synchronized to PEERS file)
     """
-    # Queue is used as a circular-queue
     while peer := await peers.get():
         try:
-            try:
-                logging.info(f"Connecting to {peer}")
-                reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
-            except OSError as e:
-                logging.error(f"Failed connecting to {peer}: {e}")
-                continue
-            connection = Connection(reader, writer, False)
-            try:
-                await connection.run()
-            except OSError as e:
-                logging.error(e)
-        finally:
-            await peers.put(peer)
+            logging.info(f"Connecting to {peer}")
+            reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
+        except OSError as e:
+            logging.error(f"Failed connecting to {peer}: {e}")
+            continue
+        connection = Connection(reader, writer, False)
+        try:
+            await connection.run()
+        except OSError as e:
+            logging.error(e)
 
 
 async def main():
