@@ -2,5 +2,5 @@ BOOTSTRAP_NODES = {
     "128.130.122.101:18018": ""
 }
 LISTEN_ADDR = "0.0.0.0:18018"
-PEERS = "../../data/peers.json"
-CLIENT_WORKERS = 8
+STORAGE_PATH = "../../data/storage.json"
+CLIENT_CONNECTIONS = 8

@@ -6,12 +6,15 @@ from json import JSONDecodeError
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
+import config
 import messages
 import schemas
-from config import LISTEN_ADDR, CLIENT_WORKERS, PEERS
-from exceptions import ProtocolError
+import storage
 from org.webpki.json.Canonicalize import canonicalize
-from peers import Peers
+
+
+class ProtocolError(Exception):
+    pass
 
 
 class Connection:
@@ -22,28 +25,27 @@ class Connection:
         self.peer_name: str = "{}:{}".format(*writer.get_extra_info("peername"))
         logging.info(f"Established connection {'from' if incoming else 'to'} {self.peer_name}")
 
-    async def run(self) -> None:
+    async def handle(self) -> None:
         await self.write_message(messages.HELLO)
         await self.write_message(messages.GET_PEERS)
         try:
             # Handshake
             message = await self.read_message()
-            validate(message, schemas.MESSAGE)
+            validate(message, schemas.HELLO)
             if message["type"] != "hello":
                 raise ProtocolError(f"Received message {message} prior to 'hello'")
             logging.info(f"Completed handshake with {self.peer_name}")
             # Request-response loop
             while True:
                 request = await self.read_message()
-                validate(request, schemas.MESSAGE)
                 logging.info(f"Received message {message} from {self.peer_name}")
-                if response := await handle_message(request):
+                if response := node.handle_message(request):
                     await self.write_message(response)
         except JSONDecodeError as e:
             logging.error(f"Unable to parse message {e.doc} from {self.peer_name}: {e}")
             response = {
                 "type": "error",
-                "error": f"Failed to parse incoming message as JSON: {e.doc}"
+                "error": f"Failed to parse incoming message as JSON: {e.doc!r}"
             }
             await self.write_message(response)
         except ValidationError as e:
@@ -78,63 +80,70 @@ class Connection:
         return json.loads(data)
 
 
-async def handle_message(message: dict) -> dict:
-    if message["type"] == "getpeers":
-        return {
-            "type": "peers",
-            "peers": [peer for peer in peers]
-        }
-    elif message["type"] == "peers":
-        await peers.add_all(message["peers"])
-        peers.dump()
-    elif message["type"] == "hello":
-        raise ProtocolError("Received a second 'hello' message, even though handshake is completed")
+class Node:
+    def __init__(self, listen_addr: str, storage_path: str) -> None:
+        self._listen_addr: str = listen_addr
+        self._storage: storage.Storage = storage.Storage(storage_path)
+        self._connections: set[Connection] = set()
+        self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(config.CLIENT_CONNECTIONS)
+        self._background_tasks: set = set()
 
+    async def serve(self) -> None:
+        for peer in self._storage:
+            task = asyncio.create_task(self.connect(peer))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
 
-async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-    connection = Connection(reader, writer, True)
-    try:
-        await connection.run()
-    except OSError as e:
-        logging.error(e)
+        server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1))
 
+        addrs = ", ".join(str(sock.getsockname()) for sock in server.sockets)
+        logging.info(f"Serving on {addrs}")
 
-async def serve():
-    server = await asyncio.start_server(handle_connection, *LISTEN_ADDR.rsplit(":", 1))
+        async with server:
+            await server.serve_forever()
 
-    addrs = ", ".join(str(sock.getsockname()) for sock in server.sockets)
-    logging.info(f"Serving on {addrs}")
+    async def connect(self, peer: str) -> None:
+        async with self._client_conn_sem:
+            if peer in {c.peer_name for c in self._connections}:
+                logging.info(f"Already connected to {peer}")
+                return
+            try:
+                logging.info(f"Connecting to {peer}")
+                reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
+            except OSError as e:
+                logging.error(f"Failed connecting to {peer}: {e}")
+                return
+            await self.handle_connection(reader, writer, False)
 
-    async with server:
-        await server.serve_forever()
-
-
-async def connect():
-    """
-    Peer discovery policy:
-      - Connect to up to CLIENT_WORKERS (default: 8) peers concurrently
-      - Keep connection with up to CLIENT_WORKERS, i.e., if a connection is terminated issue a new one (to another addr)
-      - Store all learned nodes in a dict (synchronized to PEERS file)
-    """
-    while peer := await peers.get():
+    async def handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter,
+                                incoming=True) -> None:
+        connection = Connection(reader, writer, incoming)
+        self._connections.add(connection)
         try:
-            logging.info(f"Connecting to {peer}")
-            reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
-        except OSError as e:
-            logging.error(f"Failed connecting to {peer}: {e}")
-            continue
-        connection = Connection(reader, writer, False)
-        try:
-            await connection.run()
+            await connection.handle()
         except OSError as e:
             logging.error(e)
+        self._connections.remove(connection)
 
-
-async def main():
-    await asyncio.gather(serve(), *[connect() for _ in range(CLIENT_WORKERS)])
+    def handle_message(self, message: dict) -> dict | None:
+        validate(message, schemas.MESSAGE)
+        if message["type"] == "getpeers":
+            return {
+                "type": "peers",
+                "peers": [peer for peer in self._storage]
+            }
+        elif message["type"] == "peers":
+            self._storage.add_all(message["peers"])
+            self._storage.dump()
+            for peer in message["peers"]:
+                task = asyncio.create_task(self.connect(peer))
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
+        elif message["type"] == "hello":
+            raise ProtocolError("Received a second 'hello' message, even though handshake is completed")
 
 
 if __name__ == "__main__":
-    peers: Peers = Peers(PEERS)
     logging.basicConfig(level=logging.DEBUG)
-    asyncio.run(main())
+    node = Node(config.LISTEN_ADDR, config.STORAGE_PATH)
+    asyncio.run(node.serve())
