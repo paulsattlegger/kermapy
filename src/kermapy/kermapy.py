@@ -62,11 +62,12 @@ class Connection:
                 "error": str(e)
             }
             await self.write_message(response)
-        self.close()
+        await self.close()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         logging.info(f"Closing the connection {'from' if self.incoming else 'to'} {self.peer_name}")
         self._writer.close()
+        await self._writer.wait_closed()
 
     async def write_message(self, message: dict) -> None:
         data = canonicalize(message) + b"\n"
