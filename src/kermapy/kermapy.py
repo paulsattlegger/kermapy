@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import json
 import logging
 from json import JSONDecodeError
@@ -22,8 +23,10 @@ class Connection:
         self._reader: asyncio.StreamReader = reader
         self._writer: asyncio.StreamWriter = writer
         self.incoming: bool = incoming
-        self.peer_name: str = "{}:{}".format(*writer.get_extra_info("peername"))
-        logging.info(f"Established connection {'from' if incoming else 'to'} {self.peer_name}")
+        self.peer_name: str = "{}:{}".format(
+            *writer.get_extra_info("peername"))
+        logging.info(
+            f"Established connection {'from' if incoming else 'to'} {self.peer_name}")
 
     async def handle(self) -> None:
         await self.write_message(messages.HELLO)
@@ -33,30 +36,35 @@ class Connection:
             message = await self.read_message()
             validate(message, schemas.HELLO)
             if message["type"] != "hello":
-                raise ProtocolError(f"Received message {message} prior to 'hello'")
+                raise ProtocolError(
+                    f"Received message {message} prior to 'hello'")
             logging.info(f"Completed handshake with {self.peer_name}")
             # Request-response loop
             while True:
                 request = await self.read_message()
-                logging.info(f"Received message {message} from {self.peer_name}")
+                logging.info(
+                    f"Received message {message} from {self.peer_name}")
                 if response := node.handle_message(request):
                     await self.write_message(response)
         except JSONDecodeError as e:
-            logging.error(f"Unable to parse message {e.doc} from {self.peer_name}: {e}")
+            logging.error(
+                f"Unable to parse message {e.doc} from {self.peer_name}: {e}")
             response = {
                 "type": "error",
                 "error": f"Failed to parse incoming message as JSON: {e.doc!r}"
             }
             await self.write_message(response)
         except ValidationError as e:
-            logging.error(f"Unable to validate message from {self.peer_name}: {e}")
+            logging.error(
+                f"Unable to validate message from {self.peer_name}: {e}")
             response = {
                 "type": "error",
                 "error": f"Failed to validate incoming message: {e.message}"
             }
             await self.write_message(response)
         except ProtocolError as e:
-            logging.error(f"Unable to handle message from {self.peer_name}: {e}")
+            logging.error(
+                f"Unable to handle message from {self.peer_name}: {e}")
             response = {
                 "type": "error",
                 "error": str(e)
@@ -65,7 +73,8 @@ class Connection:
         await self.close()
 
     async def close(self) -> None:
-        logging.info(f"Closing the connection {'from' if self.incoming else 'to'} {self.peer_name}")
+        logging.info(
+            f"Closing the connection {'from' if self.incoming else 'to'} {self.peer_name}")
         self._writer.close()
         await self._writer.wait_closed()
 
@@ -86,7 +95,8 @@ class Node:
         self._listen_addr: str = listen_addr
         self._storage: storage.Storage = storage.Storage(storage_path)
         self._connections: set[Connection] = set()
-        self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(config.CLIENT_CONNECTIONS)
+        self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(
+            config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
 
     async def serve(self) -> None:
@@ -128,20 +138,41 @@ class Node:
 
     def handle_message(self, message: dict) -> dict | None:
         validate(message, schemas.MESSAGE)
-        if message["type"] == "getpeers":
-            return {
-                "type": "peers",
-                "peers": [peer for peer in self._storage]
-            }
-        elif message["type"] == "peers":
-            self._storage.add_all(message["peers"])
-            self._storage.dump()
-            for peer in message["peers"]:
-                task = asyncio.create_task(self.connect(peer))
-                self._background_tasks.add(task)
-                task.add_done_callback(self._background_tasks.discard)
-        elif message["type"] == "hello":
-            raise ProtocolError("Received a second 'hello' message, even though handshake is completed")
+
+        match message["type"]:
+            case "getpeers":
+                return {
+                    "type": "peers",
+                    "peers": [peer for peer in self._storage]
+                }
+            case "peers":
+                valid_peers = []
+
+                for peer in message["peers"]:
+                    stripped = str(peer).strip()
+                    ip_port = stripped.split(":")
+                    try:
+                        ip = ipaddress.ip_address(ip_port[0])
+                        port = int(ip_port[1])
+
+                        if ip.is_global and port == 18018:
+                            valid_peers.append(str(ip) + ":" + str(port))
+                        else:
+                            logging.warn(
+                                "Peer IP is not global or port incorrect: " + stripped)
+
+                    except ValueError:
+                        logging.warn("Invalid peer: " + stripped)
+
+                self._storage.add_all(valid_peers)
+                self._storage.dump()
+                for peer in valid_peers:
+                    task = asyncio.create_task(self.connect(peer))
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
+            case "hello":
+                raise ProtocolError(
+                    "Received a second 'hello' message, even though handshake is completed")
 
 
 if __name__ == "__main__":
