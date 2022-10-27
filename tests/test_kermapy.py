@@ -1,5 +1,6 @@
 import asyncio
 import os
+import pathlib
 import sys
 import tempfile
 import unittest
@@ -33,11 +34,11 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         pass
 
     async def asyncSetUp(self):
-        self._tmp_file_path = os.path.join(tempfile.mkdtemp(), "peers.json")
-        node = Node("127.0.0.1:19000", self._tmp_file_path, False)
-        self._serve_task = asyncio.ensure_future(node.serve())
-
-        self._client = Client(*await asyncio.open_connection('127.0.0.1', 19000))
+        host, port = "127.0.0.1", 19000
+        self._tmp_file_path = pathlib.Path(tempfile.mkdtemp(), "storage.json")
+        node = Node(f"{host}:{port}", str(self._tmp_file_path))
+        self._server = asyncio.create_task(node.serve())
+        self._client = Client(*await asyncio.open_connection(host, port))
 
     async def test_hello(self):
         response = await self._client.readline()
@@ -53,11 +54,10 @@ class Task1TestCase(IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await self._client.close()
+        self._server.cancel()
 
-        self._serve_task.cancel()
-
-        if os.path.exists(self._tmp_file_path):
-            os.remove(self._tmp_file_path)
+        if self._tmp_file_path.exists():
+            self._tmp_file_path.unlink()
 
     async def on_cleanup(self):
         pass
