@@ -28,7 +28,7 @@ class Connection:
         logging.info(
             f"Established connection {'from' if incoming else 'to'} {self.peer_name}")
 
-    async def handle(self) -> None:
+    async def handle(self, node: "Node") -> None:
         await self.write_message(messages.HELLO)
         await self.write_message(messages.GET_PEERS)
         try:
@@ -91,8 +91,9 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, storage_path: str) -> None:
+    def __init__(self, listen_addr: str, storage_path: str, connect_to_saved_peers: bool = True) -> None:
         self._listen_addr: str = listen_addr
+        self._connect_to_saved_peers = connect_to_saved_peers
         self._storage: storage.Storage = storage.Storage(storage_path)
         self._connections: set[Connection] = set()
         self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(
@@ -100,18 +101,22 @@ class Node:
         self._background_tasks: set = set()
 
     async def serve(self) -> None:
-        for peer in self._storage:
-            task = asyncio.create_task(self.connect(peer))
-            self._background_tasks.add(task)
-            task.add_done_callback(self._background_tasks.discard)
+        if self._connect_to_saved_peers:
+            for peer in self._storage:
+                task = asyncio.create_task(self.connect(peer))
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
 
         server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1))
 
         addrs = ", ".join(str(sock.getsockname()) for sock in server.sockets)
         logging.info(f"Serving on {addrs}")
 
-        async with server:
-            await server.serve_forever()
+        try:
+            async with server:
+                await server.serve_forever()
+        except asyncio.CancelledError:
+            logging.warn("[serve] Received cancellation")
 
     async def connect(self, peer: str) -> None:
         async with self._client_conn_sem:
@@ -131,7 +136,9 @@ class Node:
         connection = Connection(reader, writer, incoming)
         self._connections.add(connection)
         try:
-            await connection.handle()
+            await connection.handle(self)
+        except asyncio.CancelledError:
+            logging.warning("[handle_connection] Received cancellation")
         except OSError as e:
             logging.error(e)
         self._connections.remove(connection)
