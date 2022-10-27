@@ -1,6 +1,13 @@
 import asyncio
+import os
+import sys
+import tempfile
 import unittest
 from unittest import IsolatedAsyncioTestCase
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/kermapy')))  # noqa
+
+from src.kermapy.kermapy import Node
 
 
 class Client:
@@ -26,7 +33,11 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         pass
 
     async def asyncSetUp(self):
-        self._client = Client(*await asyncio.open_connection('127.0.0.1', 18018))
+        self._tmp_file_path = os.path.join(tempfile.mkdtemp(), "peers.json")
+        node = Node("127.0.0.1:19000", self._tmp_file_path, False)
+        self._serve_task = asyncio.ensure_future(node.serve())
+
+        self._client = Client(*await asyncio.open_connection('127.0.0.1', 19000))
 
     async def test_hello(self):
         response = await self._client.readline()
@@ -42,6 +53,11 @@ class Task1TestCase(IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await self._client.close()
+
+        self._serve_task.cancel()
+
+        if os.path.exists(self._tmp_file_path):
+            os.remove(self._tmp_file_path)
 
     async def on_cleanup(self):
         pass
