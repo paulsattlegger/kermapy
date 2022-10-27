@@ -15,10 +15,3 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
-[options]
-package_dir=
-    =src
-install_requires =
-    jsonschema~=4.16.0
-[options.packages.find]
-where=src
