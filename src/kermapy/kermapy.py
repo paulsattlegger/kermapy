@@ -35,18 +35,22 @@ class Connection:
         try:
             # Handshake
             message = await self.read_message()
-            validate(message, schemas.HELLO)
-            if message["type"] != "hello":
-                raise ProtocolError(
-                    f"Received message {message} prior to 'hello'")
-            logging.info(f"Completed handshake with {self.peer_name}")
-            # Request-response loop
-            while True:
-                request = await self.read_message()
-                logging.info(
-                    f"Received message {message} from {self.peer_name}")
-                if response := node.handle_message(request):
-                    await self.write_message(response)
+            if message:
+                validate(message, schemas.HELLO)
+                if message["type"] != "hello":
+                    raise ProtocolError(
+                        f"Received message {message} prior to 'hello'")
+                logging.info(f"Completed handshake with {self.peer_name}")
+                # Request-response loop
+                while True:
+                    request = await self.read_message()
+                    if request:
+                        logging.info(
+                            f"Received message {message} from {self.peer_name}")
+                        if response := node.handle_message(request):
+                            await self.write_message(response)
+                    else:
+                        break
         except JSONDecodeError as e:
             logging.error(
                 f"Unable to parse message {e.doc} from {self.peer_name}: {e}")
@@ -85,10 +89,13 @@ class Connection:
         self._writer.write(data)
         await self._writer.drain()
 
-    async def read_message(self) -> dict:
+    async def read_message(self) -> dict | None:
         data = await self._reader.readline()
         logging.debug(f"Received {data!r} from {self.peer_name}")
-        return json.loads(data)
+        # Check for EOF -> connection closed
+        if data:
+            return json.loads(data)
+        return None
 
 
 class Node:
@@ -104,7 +111,8 @@ class Node:
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1))
 
-        addrs = ", ".join(str(sock.getsockname()) for sock in self._server.sockets)
+        addrs = ", ".join(str(sock.getsockname())
+                          for sock in self._server.sockets)
         logging.info(f"Serving on {addrs}")
 
     async def serve(self) -> None:
