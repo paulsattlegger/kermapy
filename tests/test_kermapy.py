@@ -28,6 +28,9 @@ class Client:
         await self._writer.wait_closed()
 
 
+background_tasks = set()
+
+
 class Task1TestCase(IsolatedAsyncioTestCase):
 
     def setUp(self):
@@ -36,9 +39,12 @@ class Task1TestCase(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         host, port = "127.0.0.1", 19000
         self._tmp_file_path = pathlib.Path(tempfile.mkdtemp(), "storage.json")
-        node = Node(f"{host}:{port}", str(self._tmp_file_path))
-        self._server = asyncio.create_task(node.serve())
+        self._node = Node(f"{host}:{port}", str(self._tmp_file_path))
+        await self._node.start_server()
         self._client = Client(*await asyncio.open_connection(host, port))
+        task = asyncio.create_task(self._node.serve())
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
 
     async def test_hello(self):
         response = await self._client.readline()
@@ -50,14 +56,13 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"getpeers"', response)
 
     def tearDown(self):
-        pass
-
-    async def asyncTearDown(self):
-        await self._client.close()
-        self._server.cancel()
-
         if self._tmp_file_path.exists():
             self._tmp_file_path.unlink()
+
+    async def asyncTearDown(self):
+        self._node.shutdown()
+        await asyncio.gather(*background_tasks)
+        await self._client.close()
 
     async def on_cleanup(self):
         pass

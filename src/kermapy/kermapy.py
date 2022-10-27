@@ -93,6 +93,7 @@ class Connection:
 
 class Node:
     def __init__(self, listen_addr: str, storage_path: str) -> None:
+        self._server = None
         self._listen_addr: str = listen_addr
         self._storage: storage.Storage = storage.Storage(storage_path)
         self._connections: set[Connection] = set()
@@ -100,19 +101,24 @@ class Node:
             config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
 
-    async def serve(self) -> None:
-        server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1))
+    async def start_server(self):
+        self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1))
 
-        addrs = ", ".join(str(sock.getsockname()) for sock in server.sockets)
+        addrs = ", ".join(str(sock.getsockname()) for sock in self._server.sockets)
         logging.info(f"Serving on {addrs}")
 
+    async def serve(self) -> None:
         try:
-            async with server:
-                await server.serve_forever()
+            async with self._server:
+                await self._server.serve_forever()
         except asyncio.CancelledError:
             logging.warning("[serve] Received cancellation")
 
-    async def peer_discovery(self, peers: Iterable[str] = None) -> None:
+    def shutdown(self):
+        if self._server:
+            self._server.close()
+
+    def peer_discovery(self, peers: Iterable[str] = None) -> None:
         if peers is None:
             peers = self._storage
         for peer in peers:
@@ -139,8 +145,6 @@ class Node:
         self._connections.add(connection)
         try:
             await connection.handle(self)
-        except asyncio.CancelledError:
-            logging.warning("[handle_connection] Received cancellation")
         except OSError as e:
             logging.error(e)
         self._connections.remove(connection)
@@ -158,8 +162,7 @@ class Node:
                 valid_peers = []
                 for peer in message["peers"]:
                     try:
-                        stripped = peer.strip()
-                        address, port = stripped.rsplit(":", 1)
+                        address, port = peer.strip().rsplit(":", 1)
                         ip = ipaddress.ip_address(address)
                         if ip.is_global and port == "18018":
                             valid_peers.append(f"{ip}:{port}")
@@ -177,7 +180,9 @@ class Node:
 
 
 async def main():
-    await asyncio.gather(node.serve(), node.peer_discovery())
+    await node.start_server()
+    node.peer_discovery()
+    await node.serve()
 
 
 if __name__ == "__main__":
