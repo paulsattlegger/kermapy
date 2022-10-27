@@ -3,6 +3,7 @@ import ipaddress
 import json
 import logging
 from json import JSONDecodeError
+from typing import Iterable
 
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
@@ -91,9 +92,8 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, storage_path: str, connect_to_saved_peers: bool = True) -> None:
+    def __init__(self, listen_addr: str, storage_path: str) -> None:
         self._listen_addr: str = listen_addr
-        self._connect_to_saved_peers = connect_to_saved_peers
         self._storage: storage.Storage = storage.Storage(storage_path)
         self._connections: set[Connection] = set()
         self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(
@@ -101,12 +101,6 @@ class Node:
         self._background_tasks: set = set()
 
     async def serve(self) -> None:
-        if self._connect_to_saved_peers:
-            for peer in self._storage:
-                task = asyncio.create_task(self.connect(peer))
-                self._background_tasks.add(task)
-                task.add_done_callback(self._background_tasks.discard)
-
         server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1))
 
         addrs = ", ".join(str(sock.getsockname()) for sock in server.sockets)
@@ -116,7 +110,15 @@ class Node:
             async with server:
                 await server.serve_forever()
         except asyncio.CancelledError:
-            logging.warn("[serve] Received cancellation")
+            logging.warning("[serve] Received cancellation")
+
+    async def peer_discovery(self, peers: Iterable[str] = None) -> None:
+        if peers is None:
+            peers = self._storage
+        for peer in peers:
+            task = asyncio.create_task(self.connect(peer))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
 
     async def connect(self, peer: str) -> None:
         async with self._client_conn_sem:
@@ -154,35 +156,31 @@ class Node:
                 }
             case "peers":
                 valid_peers = []
-
                 for peer in message["peers"]:
-                    stripped = str(peer).strip()
-                    ip_port = stripped.split(":")
                     try:
-                        ip = ipaddress.ip_address(ip_port[0])
-                        port = int(ip_port[1])
-
-                        if ip.is_global and port == 18018:
-                            valid_peers.append(str(ip) + ":" + str(port))
+                        stripped = peer.strip()
+                        address, port = stripped.rsplit(":", 1)
+                        ip = ipaddress.ip_address(address)
+                        if ip.is_global and port == "18018":
+                            valid_peers.append(f"{ip}:{port}")
                         else:
-                            logging.warn(
-                                "Peer IP is not global or port incorrect: " + stripped)
-
+                            logging.warning(
+                                f"Peer IP is not global or port incorrect: {peer}")
                     except ValueError:
-                        logging.warn("Invalid peer: " + stripped)
-
+                        logging.warning(f"Invalid peer: {peer}")
                 self._storage.add_all(valid_peers)
                 self._storage.dump()
-                for peer in valid_peers:
-                    task = asyncio.create_task(self.connect(peer))
-                    self._background_tasks.add(task)
-                    task.add_done_callback(self._background_tasks.discard)
+                self.peer_discovery(valid_peers)
             case "hello":
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")
 
 
+async def main():
+    await asyncio.gather(node.serve(), node.peer_discovery())
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     node = Node(config.LISTEN_ADDR, config.STORAGE_PATH)
-    asyncio.run(node.serve())
+    asyncio.run(main())
