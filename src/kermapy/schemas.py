@@ -13,7 +13,8 @@ HELLO = {
             "type": "string"
         }
     },
-    "required": ["type", "version"]
+    "required": ["type", "version"],
+    "additionalProperties": False
 }
 PEERS = {
     "type": "object",
@@ -32,7 +33,8 @@ PEERS = {
             }
         }
     },
-    "required": ["type", "peers"]
+    "required": ["type", "peers"],
+    "additionalProperties": False
 }
 MESSAGE = {
     "anyOf": [
