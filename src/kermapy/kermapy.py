@@ -35,25 +35,21 @@ class Connection:
         try:
             # Handshake
             message = await self.read_message()
-            if message:
-                validate(message, schemas.HELLO)
-                if message["type"] != "hello":
-                    raise ProtocolError(
-                        f"Received message {message} prior to 'hello'")
-                logging.info(f"Completed handshake with {self.peer_name}")
-                # Request-response loop
-                while True:
-                    request = await self.read_message()
-                    if request:
-                        logging.info(
-                            f"Received message {message} from {self.peer_name}")
-                        if response := node.handle_message(request):
-                            await self.write_message(response)
-                    else:
-                        break
+            validate(message, schemas.HELLO)
+            if message["type"] != "hello":
+                raise ProtocolError(
+                    f"Received message {message} prior to 'hello'")
+            logging.info(f"Completed handshake with {self.peer_name}")
+            # Request-response loop
+            while True:
+                request = await self.read_message()
+                logging.info(
+                    f"Received message {request} from {self.peer_name}")
+                if response := node.handle_message(request):
+                    await self.write_message(response)
         except JSONDecodeError as e:
             logging.error(
-                f"Unable to parse message {e.doc} from {self.peer_name}: {e}")
+                f"Unable to parse message {e.doc!r} from {self.peer_name}: {e}")
             response = {
                 "type": "error",
                 "error": f"Failed to parse incoming message as JSON: {e.doc!r}"
@@ -75,6 +71,8 @@ class Connection:
                 "error": str(e)
             }
             await self.write_message(response)
+        except EOFError:
+            pass
         await self.close()
 
     async def close(self) -> None:
@@ -89,13 +87,12 @@ class Connection:
         self._writer.write(data)
         await self._writer.drain()
 
-    async def read_message(self) -> dict | None:
+    async def read_message(self) -> dict:
         data = await self._reader.readline()
         logging.debug(f"Received {data!r} from {self.peer_name}")
-        # Check for EOF -> connection closed
         if data:
             return json.loads(data)
-        return None
+        raise EOFError
 
 
 class Node:
@@ -116,11 +113,8 @@ class Node:
         logging.info(f"Serving on {addrs}")
 
     async def serve(self) -> None:
-        try:
-            async with self._server:
-                await self._server.serve_forever()
-        except asyncio.CancelledError:
-            logging.warning("[serve] Received cancellation")
+        async with self._server:
+            await self._server.serve_forever()
 
     def shutdown(self):
         if self._server:

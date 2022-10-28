@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest import IsolatedAsyncioTestCase
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/kermapy')))  # noqa
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/kermapy')))
 
 from src.kermapy.kermapy import Node  # noqa: E402
 
@@ -47,19 +47,19 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         task.add_done_callback(background_tasks.discard)
 
     async def test_getHello(self):
-        #The grader node “Grader” should be able to connect to your node
-        #Grader should receive a valid hello message on connecting
+        # The grader node “Grader” should be able to connect to your node
+        # Grader should receive a valid hello message on connecting
         response = await self._client.readline()
         self.assertIn(b'"type":"hello"', response)
 
     async def test_getPeers(self):
-        #The hello message should be followed by a getpeers message.
+        # The hello message should be followed by a getpeers message.
         await self._client.readline()
         response = await self._client.readline()
         self.assertIn(b'"type":"getpeers"', response)
 
     async def test_getReconnectHello(self):
-        #Grader should be able to disconnect, then connect to your node again.
+        # Grader should be able to disconnect, then connect to your node again.
         response1 = await self._client.readline()
         await self._client.readline()
         await self._client.close()
@@ -69,7 +69,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"hello"', response2)
 
     async def test_getValidPeers(self):
-        #If Grader sends a getpeers message, it must receive a valid peers message.
+        # If Grader sends a getpeers message, it must receive a valid peers message.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
@@ -78,7 +78,8 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"peers"', response)
 
     async def test_getValidPeersDelayed(self):
-        #If Grader sends {"type":ge, waits for 0.1 second, then sends tpeers"}, your node should reply with a valid peers message.
+        # If Grader sends {"type":ge, waits for 0.1 second, then sends tpeers"}, your node should reply with a valid
+        # peers message.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
@@ -89,7 +90,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"peers"', response)
 
     async def test_getErrorNoHelloMsg(self):
-        #If Grader sends any message before sending hello, your node should send an error message and then disconnect.
+        # If Grader sends any message before sending hello, your node should send an error message and then disconnect.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'{"type":"getpeers"}\n')
@@ -97,7 +98,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"error"', response)
 
     async def test_getErrorWrongPatter1(self):
-        #If Grader sends an invalid message, your node should send an error message.
+        # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'Wbgygvf7rgtyv7tfbgy{{{\n')
@@ -105,7 +106,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"error"', response)
 
     async def test_getErrorWrongPatter2(self):
-        #If Grader sends an invalid message, your node should send an error message.
+        # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'"type":"diufygeuybhv"\n')
@@ -113,7 +114,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"error"', response)
 
     async def test_getErrorWrongPatter3(self):
-        #If Grader sends an invalid message, your node should send an error message.
+        # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'"type":"hello"\n')
@@ -121,7 +122,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"error"', response)
 
     async def test_getErrorWrongPatter4(self):
-        #If Grader sends an invalid message, your node should send an error message.
+        # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'"type":"hello","version":"jd3.x"\n')
@@ -129,7 +130,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"error"', response)
 
     async def test_getErrorWrongPatter5(self):
-        #If Grader sends an invalid message, your node should send an error message.
+        # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'"type":"hello","version":"5.8.2"\n')
@@ -137,7 +138,8 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"error"', response)
 
     async def test_getPeersAfterReConnect(self):
-        #If grader sends a set of peers in a valid peers message, disconnects, reconnects and sends a getpeers message, it must receive a peers message containing at least the peers sent in the first message.
+        # If grader sends a set of peers in a valid peers message, disconnects, reconnects and sends a getpeers
+        # message, it must receive a peers message containing at least the peers sent in the first message.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
@@ -152,19 +154,19 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"123.123.123.123:18018"', response)
 
     async def test_getHelloMessageSimultaneously(self):
-        #Grader should be able to create two connections to your node simultaneously.
+        # Grader should be able to create two connections to your node simultaneously.
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
-        self._client2 = Client(*await asyncio.open_connection("127.0.0.1", 19000))
-        await self._client2.readline()
-        await self._client2.readline()
-        await self._client2.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
-        
+        client2 = Client(*await asyncio.open_connection("127.0.0.1", 19000))
+        await client2.readline()
+        await client2.readline()
+        await client2.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
+
         await self._client.write(b'{"type":"getpeers"}\n')
-        await self._client2.write(b'{"type":"getpeers"}\n')
+        await client2.write(b'{"type":"getpeers"}\n')
         response1 = await self._client.readline()
-        response2 = await self._client2.readline()
+        response2 = await client2.readline()
         self.assertIn(b'"type":"peers"', response1)
         self.assertIn(b'"type":"peers"', response2)
 
@@ -174,7 +176,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         self._node.shutdown()
-        await asyncio.gather(*background_tasks)
+        await asyncio.gather(*background_tasks, return_exceptions=True)
         await self._client.close()
 
     async def on_cleanup(self):
