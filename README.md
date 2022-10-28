@@ -33,7 +33,7 @@ sudo python -m venv /opt/kermapy/venv
 sudo /opt/kermapy/venv/bin/pip install -r /opt/kermapy/requirements.txt
 ```
 
-```txt
+```ini
 [Unit]
 Description=Kerma protocol node in Python
 [Service]
