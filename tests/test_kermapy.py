@@ -177,7 +177,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
             self._tmp_file_path.unlink()
 
     async def asyncTearDown(self):
-        self._node.shutdown()
+        await self._node.shutdown()
         await asyncio.gather(*background_tasks, return_exceptions=True)
         await self._client.close()
 

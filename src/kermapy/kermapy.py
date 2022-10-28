@@ -113,12 +113,19 @@ class Node:
         logging.info(f"Serving on {addrs}")
 
     async def serve(self) -> None:
-        async with self._server:
-            await self._server.serve_forever()
+        try:
+            async with self._server:
+                await self._server.serve_forever()
+        finally:
+            await self.shutdown()
 
-    def shutdown(self):
+    async def shutdown(self):
         if self._server:
             self._server.close()
+        for background_task in self._background_tasks:
+            background_task.cancel()
+        await asyncio.gather(*self._background_tasks)
+        await asyncio.gather(*[connection.close() for connection in self._connections])
 
     def peer_discovery(self, peers: Iterable[str] = None) -> None:
         if peers is None:
@@ -192,4 +199,7 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     node = Node(config.LISTEN_ADDR, config.STORAGE_PATH)
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
