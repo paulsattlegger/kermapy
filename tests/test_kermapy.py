@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest import IsolatedAsyncioTestCase
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/kermapy')))  # noqa
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/kermapy')))
 
 from src.kermapy.kermapy import Node  # noqa: E402
 
@@ -174,7 +174,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         self._node.shutdown()
-        await asyncio.gather(*background_tasks)
+        await asyncio.gather(*background_tasks, return_exceptions=True)
         await self._client.close()
 
     async def on_cleanup(self):

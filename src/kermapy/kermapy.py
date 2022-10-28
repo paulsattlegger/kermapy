@@ -49,7 +49,7 @@ class Connection:
                     await self.write_message(response)
         except JSONDecodeError as e:
             logging.error(
-                f"Unable to parse message {e.doc} from {self.peer_name}: {e}")
+                f"Unable to parse message {e.doc!r} from {self.peer_name}: {e}")
             response = {
                 "type": "error",
                 "error": f"Failed to parse incoming message as JSON: {e.doc!r}"
@@ -113,11 +113,8 @@ class Node:
         logging.info(f"Serving on {addrs}")
 
     async def serve(self) -> None:
-        try:
-            async with self._server:
-                await self._server.serve_forever()
-        except asyncio.CancelledError:
-            logging.warning("[serve] Received cancellation")
+        async with self._server:
+            await self._server.serve_forever()
 
     def shutdown(self):
         if self._server:
