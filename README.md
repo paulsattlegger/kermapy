@@ -10,7 +10,7 @@ Via `docker-compose.yml`
 version: "3"
 services:
   chain-node:
-    image: ghcr.io/paulsattlegger/kermapy:v1.0.1
+    image: ghcr.io/paulsattlegger/kermapy:v1.0.2
     environment:
       BOOTSTRAP_NODES: "128.130.122.101:18018"
       LISTEN_ADDR: "0.0.0.0:18018"
