@@ -97,7 +97,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         response = await self._client.readline()
         self.assertIn(b'"type":"error"', response)
 
-    async def test_getErrorWrongPatter1(self):
+    async def test_getErrorWrongPattern1(self):
         # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
@@ -105,7 +105,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         response = await self._client.readline()
         self.assertIn(b'"type":"error"', response)
 
-    async def test_getErrorWrongPatter2(self):
+    async def test_getErrorWrongPattern2(self):
         # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
@@ -113,7 +113,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         response = await self._client.readline()
         self.assertIn(b'"type":"error"', response)
 
-    async def test_getErrorWrongPatter3(self):
+    async def test_getErrorWrongPattern3(self):
         # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
@@ -121,7 +121,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         response = await self._client.readline()
         self.assertIn(b'"type":"error"', response)
 
-    async def test_getErrorWrongPatter4(self):
+    async def test_getErrorWrongPattern4(self):
         # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
@@ -129,7 +129,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         response = await self._client.readline()
         self.assertIn(b'"type":"error"', response)
 
-    async def test_getErrorWrongPatter5(self):
+    async def test_getErrorWrongPattern5(self):
         # If Grader sends an invalid message, your node should send an error message.
         await self._client.readline()
         await self._client.readline()
@@ -169,6 +169,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         response2 = await client2.readline()
         self.assertIn(b'"type":"peers"', response1)
         self.assertIn(b'"type":"peers"', response2)
+        await client2.close()
 
     def tearDown(self):
         if self._tmp_file_path.exists():
