@@ -125,7 +125,6 @@ class Node:
         for background_task in self._background_tasks:
             background_task.cancel()
         await asyncio.gather(*self._background_tasks)
-        await asyncio.gather(*[connection.close() for connection in self._connections])
 
     def peer_discovery(self, peers: Iterable[str] = None) -> None:
         if peers is None:
@@ -156,7 +155,9 @@ class Node:
             await connection.handle(self)
         except OSError as e:
             logging.error(e)
-        self._connections.remove(connection)
+        finally:
+            await connection.close()
+            self._connections.remove(connection)
 
     def handle_message(self, message: dict) -> dict | None:
         validate(message, schemas.MESSAGE)
