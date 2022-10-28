@@ -164,13 +164,16 @@ class Node:
                 valid_peers = []
                 for peer in message["peers"]:
                     try:
-                        address, port = peer.strip().rsplit(":", 1)
+                        peer = peer.strip()
+                        address, port = peer.rsplit(":", 1)
                         ip = ipaddress.ip_address(address)
-                        if ip.is_global and port == "18018":
-                            valid_peers.append(f"{ip}:{port}")
+                        if ip.is_global:
+                            valid_peers.append(peer)
                         else:
                             logging.warning(
-                                f"Peer IP is not global or port incorrect: {peer}")
+                                f"Peer IP is not global: {peer}")
+                        if port != "18018":
+                            logging.warning(f"Peer uses non-standard port: {peer}")
                     except ValueError:
                         logging.warning(f"Invalid peer: {peer}")
                 self._storage.add_all(valid_peers)

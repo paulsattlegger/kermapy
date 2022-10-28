@@ -143,7 +143,8 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         await self._client.readline()
         await self._client.readline()
         await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
-        await self._client.write(b'{"type":"peers", "peers":["123.123.123.123:18018"]}\n')
+        # Every peer is a string in the form of <host>:<port>. The default port is 18018 but other ports are valid.
+        await self._client.write(b'{"type":"peers", "peers":["123.123.123.123:40000"]}\n')
         await self._client.close()
         self._client = Client(*await asyncio.open_connection("127.0.0.1", 19000))
         await self._client.readline()
@@ -151,7 +152,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
         await self._client.write(b'{"type":"getpeers"}\n')
         response = await self._client.readline()
-        self.assertIn(b'"123.123.123.123:18018"', response)
+        self.assertIn(b'"123.123.123.123:40000"', response)
 
     async def test_getHelloMessageSimultaneously(self):
         # Grader should be able to create two connections to your node simultaneously.
