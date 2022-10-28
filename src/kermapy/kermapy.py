@@ -178,7 +178,6 @@ class Node:
                         logging.warning(f"Invalid peer: {peer}")
                 self._storage.add_all(valid_peers)
                 self._storage.dump()
-                self.peer_discovery(valid_peers)
             case "hello":
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")
