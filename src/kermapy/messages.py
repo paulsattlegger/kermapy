@@ -1,2 +1,4 @@
-HELLO = {"type": "hello", "version": "0.8.0", "agent": "Kermapy 1.0.2"}
+from src.kermapy import VERSION
+
+HELLO = {"type": "hello", "version": "0.8.0", "agent": f"Kermapy {VERSION}"}
 GET_PEERS = {"type": "getpeers"}
