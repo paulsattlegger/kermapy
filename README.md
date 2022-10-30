@@ -28,9 +28,9 @@ Via `systemd`
 ```bash
 sudo useradd --system --shell /sbin/nologin kermapy
 sudo mkdir --parents /opt/kermapy
-sudo chown --recursive kermapy:kermapy /opt/kermapy
-sudo python -m venv /opt/kermapy/venv 
-sudo /opt/kermapy/venv/bin/pip install -r /opt/kermapy/requirements.txt
+sudo python -m venv /opt/kermapy/venv
+sudo chown --recursive kermapy:kermapy /opt/kermapy 
+/opt/kermapy/venv/bin/pip install -r /opt/kermapy/requirements.txt
 ```
 
 ```ini
