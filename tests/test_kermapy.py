@@ -184,7 +184,13 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         # Assert
         response = await self._client.readline()
         self.assertIn(b'"type":"peers"', response)
-    
+
+    async def test_getErrorNonUnicode(self):
+        await self._client.readline()
+        await self._client.readline()
+        await self._client.write(b'\xFF\n')
+        response = await self._client.readline()
+        self.assertIn(b'"type":"error"', response)
 
     def tearDown(self):
         if self._tmp_file_path.exists():

@@ -2,7 +2,6 @@ import asyncio
 import ipaddress
 import json
 import logging
-from json import JSONDecodeError
 from typing import Iterable
 
 from jsonschema.exceptions import ValidationError
@@ -47,12 +46,12 @@ class Connection:
                     f"Received message {request} from {self.peer_name}")
                 if response := node.handle_message(request):
                     await self.write_message(response)
-        except JSONDecodeError as e:
+        except ValueError as e:  # JSONDecodeError, UnicodeDecodeError
             logging.error(
-                f"Unable to parse message {e.doc!r} from {self.peer_name}: {e}")
+                f"Unable to parse message from {self.peer_name}: {e}")
             response = {
                 "type": "error",
-                "error": f"Failed to parse incoming message as JSON: {e.doc!r}"
+                "error": f"Failed to parse incoming message as JSON"
             }
             await self.write_message(response)
         except ValidationError as e:
@@ -71,7 +70,7 @@ class Connection:
                 "error": str(e)
             }
             await self.write_message(response)
-        except EOFError:
+        except (OSError, EOFError):
             pass
         await self.close()
 
