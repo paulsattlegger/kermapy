@@ -172,6 +172,20 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"type":"peers"', response2)
         await client2.close()
 
+    async def test_server_shouldAcceptArbitraryOrderInHelloMessage(self):
+        # Arrange
+        await self._client.readline()
+        await self._client.readline()
+    
+        # Act
+        await self._client.write(b'{"agent":"Kermapy 1.0.2","version":"0.8.0","type":"hello"}\n')
+        await self._client.write(b'{"type":"getpeers"}\n')
+        
+        # Assert
+        response = await self._client.readline()
+        self.assertIn(b'"type":"peers"', response)
+    
+
     def tearDown(self):
         if self._tmp_file_path.exists():
             self._tmp_file_path.unlink()
