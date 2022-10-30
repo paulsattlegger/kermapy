@@ -12,6 +12,7 @@ def __get_bootstrap_nodes() -> dict[str, str]:
     return dict
 
 
+VERSION = "1.0.2"
 BOOTSTRAP_NODES = __get_bootstrap_nodes()
 LISTEN_ADDR = os.environ.get("LISTEN_ADDR", "0.0.0.0:18018")
 STORAGE_PATH = os.environ.get("STORAGE_PATH", "../../data/storage.json")

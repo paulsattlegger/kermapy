@@ -16,4 +16,4 @@ classifiers = [
 ]
 dynamic = ["version"]
 [tool.setuptools.dynamic]
-version = {attr = "kermapy.VERSION"}
+version = { attr = "kermapy.config.VERSION" }
