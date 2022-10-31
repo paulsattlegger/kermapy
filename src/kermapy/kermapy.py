@@ -160,10 +160,10 @@ class Node:
             case "peers":
                 valid_peers = []
                 for peer in message["peers"]:
+                    peer = peer.strip()
+                    host, port = peer.rsplit(":", 1)
                     try:
-                        peer = peer.strip()
-                        address, port = peer.rsplit(":", 1)
-                        ip = ipaddress.ip_address(address)
+                        ip = ipaddress.ip_address(host)
                         if ip.is_global:
                             valid_peers.append(peer)
                         else:
