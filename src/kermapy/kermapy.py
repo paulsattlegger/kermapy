@@ -151,7 +151,6 @@ class Node:
 
     def handle_message(self, message: dict) -> dict | None:
         validate(message, schemas.MESSAGE)
-
         match message["type"]:
             case "getpeers":
                 return {

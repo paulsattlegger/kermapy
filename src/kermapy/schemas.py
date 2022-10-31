@@ -36,10 +36,24 @@ PEERS = {
     "required": ["type", "peers"],
     "additionalProperties": False
 }
+ERROR = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["error"]
+        },
+        "error": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": False
+}
 MESSAGE = {
     "anyOf": [
         HELLO,
         PEERS,
+        ERROR,
         {
             "type": "object",
             "properties": {
