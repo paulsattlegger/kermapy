@@ -11,4 +11,5 @@ VERSION = "1.0.5"
 BOOTSTRAP_NODES = _get_bootstrap_nodes()
 LISTEN_ADDR = os.environ.get("LISTEN_ADDR", "0.0.0.0:18018")
 STORAGE_PATH = os.environ.get("STORAGE_PATH", "../../data/storage.json")
+DATABASE_PATH = os.environ.get("DATABASE_PATH", "../../data")
 CLIENT_CONNECTIONS = int(os.environ.get("CLIENT_CONNECTIONS", 8))

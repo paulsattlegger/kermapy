@@ -12,6 +12,9 @@ import schemas
 import storage
 from org.webpki.json.Canonicalize import canonicalize
 
+import plyvel
+import hashlib
+
 
 class ProtocolError(Exception):
     pass
@@ -49,7 +52,7 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, storage_path: str) -> None:
+    def __init__(self, listen_addr: str, storage_path: str, database_path: str) -> None:
         self._server = None
         self._listen_addr: str = listen_addr
         self._storage: storage.Storage = storage.Storage(storage_path)
@@ -57,6 +60,7 @@ class Node:
         self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(
             config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
+        self._db: plyvel.DB = plyvel.DB(database_path, create_if_missing=True)
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1))
@@ -73,6 +77,7 @@ class Node:
             await self.shutdown()
 
     async def shutdown(self):
+        self._db.close()
         if self._server:
             self._server.close()
         for background_task in self._background_tasks:
@@ -84,6 +89,11 @@ class Node:
             task = asyncio.create_task(self.connect(peer))
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
+
+    async def gossiping(self, objectID: str) -> None:
+        for connection in self._connections:
+            message = {"type": "ihaveobject","objectid": objectID}
+            await connection.write_message(message)
 
     async def connect(self, peer: str) -> None:
         async with self._client_conn_sem:
@@ -173,6 +183,42 @@ class Node:
                         logging.warning(f"Invalid peer: {peer}")
                 self._storage.add_all(valid_peers)
                 self._storage.dump()
+            case "object":
+                object = message["object"]
+                bytesObject = json.dumps(object).encode('utf-8')
+                logging.info(
+                    f"Object: {bytesObject.decode('utf-8')}")
+                objectID = hashlib.sha256(bytesObject).hexdigest()
+                if self._db.get(objectID.encode()) is None:
+                    self._db.put(objectID.encode(), bytesObject)
+                    logging.info(
+                    f"Saved object: {object} with object ID: {objectID}")
+                    # TODO: gossiping
+                else: 
+                    logging.info(
+                    f"Object: {object} ignored, already in the database")#
+            case "ihaveobject":
+                objectID = message["objectid"]
+                if self._db.get(objectID.encode()) is None:
+                    return {
+                    "type": "getobject",
+                    "objectid": objectID
+                    }
+                else: 
+                    logging.info(
+                    f"Object with object ID: {objectID} is already in the database")
+            case "getobject":
+                objectID = message["objectid"]
+                if object := self._db.get(objectID.encode()):
+                    logging.info(
+                    f"Object: {object.decode('utf-8')}")
+                    return {
+                    "type": "object",
+                    "object": object.decode('utf-8')
+                    }
+                else: 
+                    logging.info(
+                    f"Object with object ID: {objectID} is not in the database")
             case "hello":
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")
@@ -186,7 +232,7 @@ async def main():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    node = Node(config.LISTEN_ADDR, config.STORAGE_PATH)
+    node = Node(config.LISTEN_ADDR, config.STORAGE_PATH, config.DATABASE_PATH)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

@@ -5,6 +5,8 @@ build-backend = "setuptools.build_meta"
 name = "kermapy"
 authors = [
     { name = "Paul Florian Sattlegger" },
+    { name = "Marcel Juen" },
+    { name = "Tobias Schwab" },
 ]
 description = "Kerma protocol node in Python"
 readme = "README.md"
