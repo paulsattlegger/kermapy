@@ -16,6 +16,7 @@ services:
       LISTEN_ADDR: "0.0.0.0:18018"
       STORAGE_PATH: "/app/data/peers.json"
       CLIENT_CONNECTIONS: 8
+    stop_signal: SIGINT
     volumes:
       - "./data:/app/data"
     restart: unless-stopped
@@ -39,6 +40,7 @@ Description=Kerma protocol node in Python
 [Service]
 User=kermapy
 Group=kermapy
+KillSignal=SIGINT
 WorkingDirectory=/opt/kermapy/src/kermapy/
 ExecStart=/opt/kermapy/venv/bin/python3 kermapy.py
 [Install]
