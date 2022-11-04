@@ -39,7 +39,8 @@ class Task1TestCase(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         host, port = "127.0.0.1", 19000
         self._tmp_file_path = pathlib.Path(tempfile.mkdtemp(), "storage.json")
-        self._node = Node(f"{host}:{port}", str(self._tmp_file_path))
+        self._tmp_database_path = pathlib.Path(tempfile.mkdtemp(), "../../data")
+        self._node = Node(f"{host}:{port}", str(self._tmp_file_path), str(self._tmp_database_path))
         await self._node.start_server()
         self._client = Client(*await asyncio.open_connection(host, port))
         task = asyncio.create_task(self._node.serve())
