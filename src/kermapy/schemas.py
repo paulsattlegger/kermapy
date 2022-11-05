@@ -43,6 +43,7 @@ GET_PEERS = {
             "enum": ["getpeers"]
         },
     },
+    "required": ["type"],
     "additionalProperties": False
 }
 ERROR = {
@@ -56,6 +57,7 @@ ERROR = {
             "type": "string"
         }
     },
+    "required": ["type", "error"],
     "additionalProperties": False
 }
 OBJECT = {
@@ -66,6 +68,7 @@ OBJECT = {
             "enum": ["object"]
         },
     },
+    "required": ["type"],
     "additionalProperties": True
 }
 HAVE_OBJECT = {
@@ -79,6 +82,7 @@ HAVE_OBJECT = {
             "type": "string"
         }
     },
+    "required": ["type", "objectid"],
     "additionalProperties": False
 }
 GET_OBJECT = {
@@ -92,6 +96,7 @@ GET_OBJECT = {
             "type": "string"
         }
     },
+    "required": ["type", "objectid"],
     "additionalProperties": False
 }
 MESSAGE = {
@@ -109,10 +114,10 @@ MESSAGE = {
                 "type": {
                     "type": "string",
                     "enum": [
-                             "getmempool",
-                             "mempool",
-                             "getchaintip",
-                             "chaintip"]
+                        "getmempool",
+                        "mempool",
+                        "getchaintip",
+                        "chaintip"]
                 }
             },
             "required": ["type"]
