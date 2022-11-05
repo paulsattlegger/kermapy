@@ -99,6 +99,105 @@ GET_OBJECT = {
     "required": ["type", "objectid"],
     "additionalProperties": False
 }
+TRANSACTION = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["transaction"]
+        },
+        "inputs": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "outpoint": {
+                        "type": "object",
+                        "properties": {
+                            "txid": {
+                                "type": "string",
+                                "pattern": r"^[0-9a-f]+$",
+                                "minLength": 64,
+                                "maxLength": 64
+                            },
+                            "index": {
+                                "type": "integer",
+                                "minimum": 0
+                            }
+                        },
+                        "required": ["txid", "index"],
+                        "additionalProperties": False
+                    },
+                    "sig": {
+                        "type": "string",
+                        "pattern": r"^[0-9a-f]+$",
+                        "minLength": 128,
+                        "maxLength": 128
+                    }
+                },
+                "required": ["outpoint", "sig"],
+                "additionalProperties": False
+            }
+        },
+        "outputs": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "pubkey": {
+                        "type": "string",
+                        "pattern": r"^[0-9a-f]+$",
+                        "minLength": 64,
+                        "maxLength": 64
+                    },
+                    "value": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                }
+            },
+            "required": ["pubkey", "value"],
+            "additionalProperties": False
+        }
+    },
+    "required": ["type", "inputs", "outputs"],
+    "additionalProperties": False
+}
+COINBASE_TRANSACTION = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["transaction"]
+        },
+        "height": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "outputs": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "pubkey": {
+                        "type": "string",
+                        "pattern": r"^[0-9a-f]+$",
+                        "minLength": 64,
+                        "maxLength": 64
+                    },
+                    "value": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                }
+            },
+            "required": ["pubkey", "value"],
+            "additionalProperties": False
+        }
+    },
+    "required": ["type", "height", "outputs"],
+    "additionalProperties": False
+}
 MESSAGE = {
     "anyOf": [
         HELLO,
@@ -108,6 +207,8 @@ MESSAGE = {
         OBJECT,
         HAVE_OBJECT,
         GET_OBJECT,
+        TRANSACTION,
+        COINBASE_TRANSACTION,
         {
             "type": "object",
             "properties": {
