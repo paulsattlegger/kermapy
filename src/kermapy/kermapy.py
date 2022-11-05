@@ -1,8 +1,10 @@
 import asyncio
+import hashlib
 import ipaddress
 import json
 import logging
 
+import plyvel
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
@@ -11,9 +13,6 @@ import messages
 import schemas
 import storage
 from org.webpki.json.Canonicalize import canonicalize
-
-import plyvel
-import hashlib
 
 
 class ProtocolError(Exception):
@@ -90,9 +89,8 @@ class Node:
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
 
-    def gossiping(self, object_id: str) -> None:
+    def broadcast(self, message: dict) -> None:
         for connection in self._connections:
-            message = {"type": "ihaveobject","objectid": object_id}
             task = asyncio.create_task(connection.write_message(message))
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
@@ -186,37 +184,40 @@ class Node:
                 self._storage.add_all(valid_peers)
                 self._storage.dump()
             case "object":
-                object = message["object"]
-                bytes_object = canonicalize(object)
-                object_id = hashlib.sha256(bytes_object).hexdigest()
-                if self._db.get(object_id.encode()) is None:
-                    self._db.put(object_id.encode(), bytes_object)
+                object_ = message["object"]
+                canonical_object = canonicalize(object_)
+                object_id = hashlib.sha256(canonical_object)
+                if self._db.get(object_id.digest()) is None:
+                    self._db.put(object_id.digest(), canonical_object)
                     logging.info(
-                    f"Saved object: {object} with object ID: {object_id}")
-                    self.gossiping(object_id)
-                else: 
+                        f"Saved object: {object_} with object ID: {object_id.hexdigest()}")
+                    self.broadcast({
+                        "type": "ihaveobject",
+                        "objectid": object_id.hexdigest()
+                    })
+                else:
                     logging.info(
-                    f"Object: {object} ignored, already in the database")#
+                        f"Object: {object_} ignored, already in the database")
             case "ihaveobject":
-                object_id = message["objectid"]
-                if self._db.get(object_id.encode()) is None:
+                object_id = bytes.fromhex(message["objectid"])
+                if self._db.get(object_id) is None:
                     return {
-                    "type": "getobject",
-                    "objectid": object_id
+                        "type": "getobject",
+                        "objectid": object_id
                     }
-                else: 
+                else:
                     logging.info(
-                    f"Object with object ID: {object_id} is already in the database")
+                        f"Object with object ID: {object_id} is already in the database")
             case "getobject":
-                object_id = message["objectid"]
-                if object := self._db.get(object_id.encode()):
+                object_id = bytes.fromhex(message["objectid"])
+                if object_ := self._db.get(object_id):
                     return {
-                    "type": "object",
-                    "object": object.decode()
+                        "type": "object",
+                        "object": json.loads(object_)
                     }
-                else: 
+                else:
                     logging.info(
-                    f"Object with object ID: {object_id} is not in the database")
+                        f"Object with object ID: {object_id} is not in the database")
             case "hello":
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")
