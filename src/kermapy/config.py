@@ -2,14 +2,15 @@ import os
 
 
 def _get_bootstrap_nodes() -> dict[str, str]:
-    raw_nodes = os.environ.get("BOOTSTRAP_NODES", "128.130.122.101:18018")
+    raw_nodes = os.getenv("BOOTSTRAP_NODES", "128.130.122.101:18018")
     nodes = raw_nodes.split(",")
     return {item: "" for item in nodes}
 
 
 VERSION = "1.0.5"
 BOOTSTRAP_NODES = _get_bootstrap_nodes()
-LISTEN_ADDR = os.environ.get("LISTEN_ADDR", "0.0.0.0:18018")
-STORAGE_PATH = os.environ.get("STORAGE_PATH", "../../data/storage.json")
-DATABASE_PATH = os.environ.get("DATABASE_PATH", "../../data")
-CLIENT_CONNECTIONS = int(os.environ.get("CLIENT_CONNECTIONS", 8))
+LISTEN_ADDR = os.getenv("LISTEN_ADDR", "0.0.0.0:18018")
+STORAGE_PATH = os.getenv("STORAGE_PATH", "../../data/storage.json")
+DATABASE_PATH = os.getenv("DATABASE_PATH", "../../data")
+CLIENT_CONNECTIONS = int(os.getenv("CLIENT_CONNECTIONS", "8"))
+BUFFER_SIZE = int(os.getenv("BUFFER_SIZE", "1048576"))

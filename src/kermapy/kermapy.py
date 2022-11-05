@@ -62,7 +62,8 @@ class Node:
         self._db: plyvel.DB = plyvel.DB(database_path, create_if_missing=True)
 
     async def start_server(self):
-        self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1))
+        self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
+                                                  limit=config.BUFFER_SIZE)
 
         addrs = ", ".join(str(sock.getsockname())
                           for sock in self._server.sockets)
@@ -102,7 +103,7 @@ class Node:
                 return
             try:
                 logging.info(f"Connecting to {peer}")
-                reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1))
+                reader, writer = await asyncio.open_connection(*peer.rsplit(":", 1), limit=config.BUFFER_SIZE)
             except OSError as e:
                 logging.error(f"Failed connecting to {peer}: {e}")
                 return
