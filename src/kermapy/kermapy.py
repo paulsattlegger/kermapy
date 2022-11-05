@@ -90,10 +90,12 @@ class Node:
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
 
-    async def gossiping(self, objectID: str) -> None:
+    def gossiping(self, object_id: str) -> None:
         for connection in self._connections:
-            message = {"type": "ihaveobject","objectid": objectID}
-            await connection.write_message(message)
+            message = {"type": "ihaveobject","objectid": object_id}
+            task = asyncio.create_task(connection.write_message(message))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
 
     async def connect(self, peer: str) -> None:
         async with self._client_conn_sem:
@@ -185,40 +187,36 @@ class Node:
                 self._storage.dump()
             case "object":
                 object = message["object"]
-                bytesObject = json.dumps(object).encode('utf-8')
-                logging.info(
-                    f"Object: {bytesObject.decode('utf-8')}")
-                objectID = hashlib.sha256(bytesObject).hexdigest()
-                if self._db.get(objectID.encode()) is None:
-                    self._db.put(objectID.encode(), bytesObject)
+                bytes_object = canonicalize(object)
+                object_id = hashlib.sha256(bytes_object).hexdigest()
+                if self._db.get(object_id.encode()) is None:
+                    self._db.put(object_id.encode(), bytes_object)
                     logging.info(
-                    f"Saved object: {object} with object ID: {objectID}")
-                    # TODO: gossiping
+                    f"Saved object: {object} with object ID: {object_id}")
+                    self.gossiping(object_id)
                 else: 
                     logging.info(
                     f"Object: {object} ignored, already in the database")#
             case "ihaveobject":
-                objectID = message["objectid"]
-                if self._db.get(objectID.encode()) is None:
+                object_id = message["objectid"]
+                if self._db.get(object_id.encode()) is None:
                     return {
                     "type": "getobject",
-                    "objectid": objectID
+                    "objectid": object_id
                     }
                 else: 
                     logging.info(
-                    f"Object with object ID: {objectID} is already in the database")
+                    f"Object with object ID: {object_id} is already in the database")
             case "getobject":
-                objectID = message["objectid"]
-                if object := self._db.get(objectID.encode()):
-                    logging.info(
-                    f"Object: {object.decode('utf-8')}")
+                object_id = message["objectid"]
+                if object := self._db.get(object_id.encode()):
                     return {
                     "type": "object",
-                    "object": object.decode('utf-8')
+                    "object": object.decode()
                     }
                 else: 
                     logging.info(
-                    f"Object with object ID: {objectID} is not in the database")
+                    f"Object with object ID: {object_id} is not in the database")
             case "hello":
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")

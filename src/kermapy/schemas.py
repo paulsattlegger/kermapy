@@ -35,6 +35,16 @@ PEERS = {
     "required": ["type", "peers"],
     "additionalProperties": False
 }
+GET_PEERS = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["getpeers"]
+        },
+    },
+    "additionalProperties": False
+}
 ERROR = {
     "type": "object",
     "properties": {
@@ -48,20 +58,57 @@ ERROR = {
     },
     "additionalProperties": False
 }
+OBJECT = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["object"]
+        },
+    },
+    "additionalProperties": True
+}
+HAVE_OBJECT = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["ihaveobject"]
+        },
+        "objectid": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": False
+}
+GET_OBJECT = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["getobject"]
+        },
+        "objectid": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": False
+}
 MESSAGE = {
     "anyOf": [
         HELLO,
         PEERS,
+        GET_PEERS,
         ERROR,
+        OBJECT,
+        HAVE_OBJECT,
+        GET_OBJECT,
         {
             "type": "object",
             "properties": {
                 "type": {
                     "type": "string",
-                    "enum": ["getpeers",
-                             "getobject",
-                             "ihaveobject",
-                             "object",
+                    "enum": [
                              "getmempool",
                              "mempool",
                              "getchaintip",
