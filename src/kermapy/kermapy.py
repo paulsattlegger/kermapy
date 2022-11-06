@@ -112,16 +112,16 @@ class Node:
     async def handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter,
                                 incoming=True) -> None:
         conn = Connection(reader, writer, incoming)
-        self._connections.add(conn)
-        await conn.write_message(messages.HELLO)
-        await conn.write_message(messages.GET_PEERS)
         try:
+            await conn.write_message(messages.HELLO)
+            await conn.write_message(messages.GET_PEERS)
             # Handshake
             message = await conn.read_message()
             validate(message, schemas.HELLO)
             if message["type"] != "hello":
                 raise ProtocolError(
                     f"Received message {message} prior to 'hello'")
+            self._connections.add(conn)
             logging.info(f"Completed handshake with {conn.peer_name}")
             # Request-response loop
             while True:
@@ -158,7 +158,7 @@ class Node:
             await conn.write_message(response)
         finally:
             await conn.close()
-            self._connections.remove(conn)
+            self._connections.discard(conn)
 
     def handle_message(self, message: dict) -> dict | None:
         validate(message, schemas.MESSAGE)
@@ -200,18 +200,18 @@ class Node:
                     logging.info(
                         f"Object: {object_} ignored, already in the database")
             case "ihaveobject":
-                object_id = bytes.fromhex(message["objectid"])
-                if self._db.get(object_id) is None:
+                object_id = message["objectid"]
+                if self._db.get(bytes.fromhex(object_id)) is None:
                     return {
                         "type": "getobject",
-                        "objectid":  message["objectid"]
+                        "objectid": object_id
                     }
                 else:
                     logging.info(
                         f"Object with object ID: {object_id} is already in the database")
             case "getobject":
-                object_id = bytes.fromhex(message["objectid"])
-                if object_ := self._db.get(object_id):
+                object_id = message["objectid"]
+                if object_ := self._db.get(bytes.fromhex(object_id)):
                     return {
                         "type": "object",
                         "object": json.loads(object_)

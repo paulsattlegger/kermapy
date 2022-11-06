@@ -276,6 +276,21 @@ class Task2TestCase(IsolatedAsyncioTestCase):
         self.assertIn(b'"objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"', response)
         self.assertIn(b'"type":"getobject"', response)
 
+    async def test_objectSentAndHandshakeNotCompleted_shouldNotReceiveIHaveObject(self):
+        await self._client.readline()
+        await self._client.readline()
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
+
+        client2 = Client(*await asyncio.open_connection("127.0.0.1", 19000))
+        await client2.readline()
+        await client2.readline()
+
+        await self._client.write(
+            b'{"type": "object", "object": {"type": "block", "txids": ["740bcfb434c89abe57bb2bc80290cd5495e87ebf8cd0dadb076bc50453590104"], "nonce": "a26d92800cf58e88a5ecf37156c031a4147c2128beeaf1cca2785c93242a4c8b", "previd": "0024839ec9632d382486ba7aac7e0bda3b4bda1d4bd79be9ae78e7e1e813ddd8", "created": "1622825642", "T": "003a000000000000000000000000000000000000000000000000000000000000"}}\n')
+
+        with self.assertRaises(asyncio.TimeoutError):
+            await asyncio.wait_for(client2.readline(), 1.0)
+
     def tearDown(self):
         if self._tmp_file_path.exists():
             self._tmp_file_path.unlink()
