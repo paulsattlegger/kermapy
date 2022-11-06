@@ -1,6 +1,5 @@
 import asyncio
 import hashlib
-import ipaddress
 import json
 import logging
 
@@ -10,8 +9,8 @@ from jsonschema.validators import validate
 
 import config
 import messages
+import peers
 import schemas
-import storage
 from org.webpki.json.Canonicalize import canonicalize
 
 
@@ -51,10 +50,10 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, storage_path: str, database_path: str) -> None:
+    def __init__(self, listen_addr: str, peers_path: str, database_path: str) -> None:
         self._server = None
         self._listen_addr: str = listen_addr
-        self._storage: storage.Storage = storage.Storage(storage_path)
+        self._peers: peers.Peers = peers.Peers(peers_path)
         self._connections: set[Connection] = set()
         self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(
             config.CLIENT_CONNECTIONS)
@@ -85,7 +84,7 @@ class Node:
         await asyncio.gather(*self._background_tasks)
 
     def peer_discovery(self) -> None:
-        for peer in self._storage:
+        for peer in self._peers:
             task = asyncio.create_task(self.connect(peer))
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
@@ -166,24 +165,11 @@ class Node:
             case "getpeers":
                 return {
                     "type": "peers",
-                    "peers": [peer for peer in self._storage]
+                    "peers": [peer for peer in self._peers]
                 }
             case "peers":
-                valid_peers = []
-                for peer in message["peers"]:
-                    peer = peer.strip()
-                    host, port = peer.rsplit(":", 1)
-                    try:
-                        ip = ipaddress.ip_address(host)
-                        if ip.is_global:
-                            valid_peers.append(peer)
-                        else:
-                            logging.warning(
-                                f"Peer IP is not global: {peer}")
-                    except ValueError:
-                        logging.warning(f"Invalid peer: {peer}")
-                self._storage.add_all(valid_peers)
-                self._storage.dump()
+                self._peers.add_all(message["peers"])
+                self._peers.dump()
             case "object":
                 object_ = message["object"]
                 canonical_object = canonicalize(object_)
@@ -232,7 +218,7 @@ async def main():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    node = Node(config.LISTEN_ADDR, config.STORAGE_PATH, config.DATABASE_PATH)
+    node = Node(config.LISTEN_ADDR, config.PEERS_PATH, config.DATABASE_PATH)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

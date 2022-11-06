@@ -10,7 +10,7 @@ def _get_bootstrap_nodes() -> dict[str, str]:
 VERSION = "1.0.5"
 BOOTSTRAP_NODES = _get_bootstrap_nodes()
 LISTEN_ADDR = os.getenv("LISTEN_ADDR", "0.0.0.0:18018")
-STORAGE_PATH = os.getenv("STORAGE_PATH", "../../data/storage.json")
+PEERS_PATH = os.getenv("PEERS_PATH", "../../data/peers.json")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "../../data")
 CLIENT_CONNECTIONS = int(os.getenv("CLIENT_CONNECTIONS", "8"))
 BUFFER_SIZE = int(os.getenv("BUFFER_SIZE", "1048576"))

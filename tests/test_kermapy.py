@@ -52,9 +52,9 @@ background_tasks = set()
 class KermaTestCase(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self._tmp_directory = tempfile.mkdtemp()
-        storage_path = pathlib.Path(self._tmp_directory, "storage.json")
+        peers_path = pathlib.Path(self._tmp_directory, "peers.json")
         database_path = pathlib.Path(self._tmp_directory)
-        self._node = Node(f"{HOST}:{PORT}", str(storage_path), str(database_path))
+        self._node = Node(f"{HOST}:{PORT}", str(peers_path), str(database_path))
         await self._node.start_server()
         task = asyncio.create_task(self._node.serve())
         background_tasks.add(task)

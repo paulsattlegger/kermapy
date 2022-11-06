@@ -1,3 +1,4 @@
+import ipaddress
 import json
 import logging
 import pathlib
@@ -7,7 +8,7 @@ from typing import Iterator
 from config import BOOTSTRAP_NODES
 
 
-class Storage:
+class Peers:
     def __init__(self, path: str) -> None:
         self._dict: dict[str] = {}
         self._cntr: Counter[str] = Counter()
@@ -20,11 +21,19 @@ class Storage:
     def add(self, peer: str) -> None:
         if peer not in self._dict:
             host, port = peer.rsplit(":", 1)
-            if port == "18018" or self._cntr[host] < 10:
-                self._dict[peer] = ""
-                self._cntr[host] += 1
+            try:
+                ip = ipaddress.ip_address(host)
+            except ValueError:
+                logging.warning(f"Invalid peer: {peer}")
+                return
+            if ip.is_global:
+                if port == "18018" or self._cntr[host] < 10:
+                    self._dict[peer] = ""
+                    self._cntr[host] += 1
+                else:
+                    logging.debug(f"Too many peers for same host: {peer}")
             else:
-                logging.debug(f"Too many peers for same host: {peer}")
+                logging.warning(f"Peer IP is not global: {peer}")
 
     def add_all(self, peers: list[str]) -> None:
         for peer in peers:
