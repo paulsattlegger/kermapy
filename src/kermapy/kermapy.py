@@ -204,7 +204,7 @@ class Node:
                 if self._db.get(object_id) is None:
                     return {
                         "type": "getobject",
-                        "objectid": object_id
+                        "objectid":  message["objectid"]
                     }
                 else:
                     logging.info(

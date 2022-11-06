@@ -73,7 +73,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         # If Grader sends a getpeers message, it must receive a valid peers message.
         await self._client.readline()
         await self._client.readline()
-        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
         await self._client.write(b'{"type":"getpeers"}\n')
         response = await self._client.readline()
         self.assertIn(b'"type":"peers"', response)
@@ -83,7 +83,7 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         # peers message.
         await self._client.readline()
         await self._client.readline()
-        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
         await self._client.write(b'{"type":"ge')
         await asyncio.sleep(0.1)
         await self._client.write(b'tpeers"}\n')
@@ -143,14 +143,14 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         # message, it must receive a peers message containing at least the peers sent in the first message.
         await self._client.readline()
         await self._client.readline()
-        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
         # Every peer is a string in the form of <host>:<port>. The default port is 18018 but other ports are valid.
         await self._client.write(b'{"type":"peers", "peers":["123.123.123.123:40000"]}\n')
         await self._client.close()
         self._client = Client(*await asyncio.open_connection("127.0.0.1", 19000))
         await self._client.readline()
         await self._client.readline()
-        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
         await self._client.write(b'{"type":"getpeers"}\n')
         response = await self._client.readline()
         self.assertIn(b'"123.123.123.123:40000"', response)
@@ -159,11 +159,11 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         # Grader should be able to create two connections to your node simultaneously.
         await self._client.readline()
         await self._client.readline()
-        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
         client2 = Client(*await asyncio.open_connection("127.0.0.1", 19000))
         await client2.readline()
         await client2.readline()
-        await client2.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.1"}\n')
+        await client2.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
 
         await self._client.write(b'{"type":"getpeers"}\n')
         await client2.write(b'{"type":"getpeers"}\n')
@@ -192,6 +192,89 @@ class Task1TestCase(IsolatedAsyncioTestCase):
         await self._client.write(b'\xFF\n')
         response = await self._client.readline()
         self.assertIn(b'"type":"error"', response)
+
+    def tearDown(self):
+        if self._tmp_file_path.exists():
+            self._tmp_file_path.unlink()
+
+    async def asyncTearDown(self):
+        await self._node.shutdown()
+        await asyncio.gather(*background_tasks, return_exceptions=True)
+        await self._client.close()
+
+    async def on_cleanup(self):
+        pass
+
+class Task2TestCase(IsolatedAsyncioTestCase):
+
+    def setUp(self):
+        pass
+
+    async def asyncSetUp(self):
+        host, port = "127.0.0.1", 19000
+        self._tmp_file_path = pathlib.Path(tempfile.mkdtemp(), "storage.json")
+        self._tmp_database_path = pathlib.Path(tempfile.mkdtemp(), "data")
+        self._node = Node(f"{host}:{port}", str(self._tmp_file_path), str(self._tmp_database_path))
+        await self._node.start_server()
+        self._client = Client(*await asyncio.open_connection(host, port))
+        task = asyncio.create_task(self._node.serve())
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
+
+ 
+    async def test_getSameObject(self):
+        # If Grader 1 sends a new valid transaction object and then requests the same object, Grader 1 should receive the object.
+        await self._client.readline()
+        await self._client.readline()
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
+        await self._client.write(b'{"type": "object", "object": {"type": "block", "txids": ["740bcfb434c89abe57bb2bc80290cd5495e87ebf8cd0dadb076bc50453590104"], "nonce": "a26d92800cf58e88a5ecf37156c031a4147c2128beeaf1cca2785c93242a4c8b", "previd": "0024839ec9632d382486ba7aac7e0bda3b4bda1d4bd79be9ae78e7e1e813ddd8", "created": "1622825642", "T": "003a000000000000000000000000000000000000000000000000000000000000"}}\n')
+        await self._client.write(b'{"type":"getobject","objectid":"4e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"}\n')
+        response = await self._client.readline()
+        self.assertIn(b'"740bcfb434c89abe57bb2bc80290cd5495e87ebf8cd0dadb076bc50453590104"', response)
+        self.assertIn(b'"type":"object"', response)
+
+    async def test_getSameObjectOtherClient(self):
+        # If Grader 1 sends a new valid transaction object and then Grader 2 requests the same object, Grader 2 should receive the object.
+        await self._client.readline()
+        await self._client.readline()
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
+        await self._client.write(b'{"type": "object", "object": {"type": "block", "txids": ["740bcfb434c89abe57bb2bc80290cd5495e87ebf8cd0dadb076bc50453590104"], "nonce": "a26d92800cf58e88a5ecf37156c031a4147c2128beeaf1cca2785c93242a4c8b", "previd": "0024839ec9632d382486ba7aac7e0bda3b4bda1d4bd79be9ae78e7e1e813ddd8", "created": "1622825642", "T": "003a000000000000000000000000000000000000000000000000000000000000"}}\n')
+
+        client2 = Client(*await asyncio.open_connection("127.0.0.1", 19000))
+        await client2.readline()
+        await client2.readline()
+        await client2.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
+        await client2.write(b'{"type":"getobject","objectid":"4e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"}\n')
+        response = await client2.readline()
+        self.assertIn(b'"740bcfb434c89abe57bb2bc80290cd5495e87ebf8cd0dadb076bc50453590104"', response)
+        self.assertIn(b'"type":"object"', response)
+    
+    async def test_getIHaveObjMessage(self):
+        # If Grader 1 sends a new valid transaction object, Grader 2 must receive an ihaveobject message with the object id.
+        await self._client.readline()
+        await self._client.readline()
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
+
+        client2 = Client(*await asyncio.open_connection("127.0.0.1", 19000))
+        await client2.readline()
+        await client2.readline()
+        await client2.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
+        
+        await self._client.write(b'{"type": "object", "object": {"type": "block", "txids": ["740bcfb434c89abe57bb2bc80290cd5495e87ebf8cd0dadb076bc50453590104"], "nonce": "a26d92800cf58e88a5ecf37156c031a4147c2128beeaf1cca2785c93242a4c8b", "previd": "0024839ec9632d382486ba7aac7e0bda3b4bda1d4bd79be9ae78e7e1e813ddd8", "created": "1622825642", "T": "003a000000000000000000000000000000000000000000000000000000000000"}}\n')
+
+        response = await client2.readline()
+        self.assertIn(b'"objectid":"4e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"', response)
+        self.assertIn(b'"type":"ihaveobject"', response)
+    
+    async def test_getGetObjMessage(self):
+        # If Grader 1 sends an ihaveobject message with the id of a new object, Grader 1 must receive a getobject message with the same object id.
+        await self._client.readline()
+        await self._client.readline()
+        await self._client.write(b'{"type": "hello", "version": "0.8.0", "agent": "Kermapy 0.0.x"}\n')
+        await self._client.write(b'{"type":"ihaveobject", "objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"}\n')
+        response = await self._client.readline()
+        self.assertIn(b'"objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"', response)
+        self.assertIn(b'"type":"getobject"', response)
 
     def tearDown(self):
         if self._tmp_file_path.exists():
