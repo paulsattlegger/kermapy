@@ -50,3 +50,4 @@ class Peers:
         else:
             peers = BOOTSTRAP_NODES
         self._dict = peers
+        self._cntr = Counter([peer.rsplit(":", 1)[0] for peer in peers])
