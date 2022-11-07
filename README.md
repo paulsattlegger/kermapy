@@ -10,7 +10,7 @@ Via `docker-compose.yml`
 version: "3"
 services:
   chain-node:
-    image: ghcr.io/paulsattlegger/kermapy:v1.0.2
+    image: ghcr.io/paulsattlegger/kermapy:v1.0.5
     environment:
       BOOTSTRAP_NODES: "128.130.122.101:18018"
       LISTEN_ADDR: "0.0.0.0:18018"
@@ -30,7 +30,7 @@ Via `systemd`
 sudo useradd --system --shell /sbin/nologin kermapy
 sudo mkdir --parents /opt/kermapy
 sudo python -m venv /opt/kermapy/venv
-sudo chown --recursive kermapy:kermapy /opt/kermapy 
+sudo chown --recursive kermapy:kermapy /opt/kermapy
 /opt/kermapy/venv/bin/pip install -r /opt/kermapy/requirements.txt
 ```
 
