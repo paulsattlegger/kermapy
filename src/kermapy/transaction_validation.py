@@ -99,4 +99,4 @@ def _validate_outputs(transaction: dict, total_input_value: int):
 
     if total_input_value < total_output_value:
         raise ProtocolError(
-            "Sum of input values is smaller than the specified output values")
+            "Sum of input values is smaller than the sum of the specified output values")
