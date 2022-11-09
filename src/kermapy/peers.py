@@ -9,10 +9,10 @@ from config import BOOTSTRAP_NODES
 
 
 class Peers:
-    def __init__(self, path: str) -> None:
+    def __init__(self, storage_path: str) -> None:
         self._dict: dict[str] = {}
         self._cntr: Counter[str] = Counter()
-        self._path: pathlib.Path = pathlib.Path(path)
+        self._path: pathlib.Path = pathlib.Path(storage_path, "peers.json")
         self.load()
 
     def __iter__(self) -> Iterator[str]:

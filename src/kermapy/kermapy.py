@@ -50,15 +50,15 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, peers_path: str, database_path: str) -> None:
+    def __init__(self, listen_addr: str, storage_path: str) -> None:
         self._server = None
         self._listen_addr: str = listen_addr
-        self._peers: peers.Peers = peers.Peers(peers_path)
+        self._peers: peers.Peers = peers.Peers(storage_path)
         self._connections: set[Connection] = set()
         self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(
             config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
-        self._db: plyvel.DB = plyvel.DB(database_path, create_if_missing=True)
+        self._db: plyvel.DB = plyvel.DB(storage_path, create_if_missing=True)
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -218,7 +218,7 @@ async def main():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    node = Node(config.LISTEN_ADDR, config.PEERS_PATH, config.DATABASE_PATH)
+    node = Node(config.LISTEN_ADDR, config.STORAGE_PATH)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
