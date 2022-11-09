@@ -1,8 +1,5 @@
 import json
 import plyvel
-import hashlib
-
-from exceptions import ProtocolError
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.exceptions import InvalidSignature
@@ -10,7 +7,21 @@ from cryptography.exceptions import InvalidSignature
 from org.webpki.json.Canonicalize import canonicalize
 
 
+class InvalidTransaction(Exception):
+    pass
+
+
 def validate_transaction(message: dict, db: plyvel.DB):
+    """
+    Validates a transaction and raises an error, if it is invalid
+
+    Args:
+        message (dict): The transaction message that should be validated
+        db (plyvel.DB): The database in which the referenced txs should be searched
+
+    Raises:
+        InvalidTransaction: The error that is raised when the transaction is not valid
+    """
     transaction = message["transaction"]
 
     # is coinbase transaction
@@ -21,7 +32,7 @@ def validate_transaction(message: dict, db: plyvel.DB):
         output_count = len(transaction["outputs"])
 
         if input_count < output_count:
-            raise ProtocolError(
+            raise InvalidTransaction(
                 "Transactions sum of input values must be equal or exceed the sum of output values")
 
         total_input_value = _validate_inputs(transaction, db)
@@ -39,7 +50,7 @@ def _validate_inputs(transaction: dict, db: plyvel.DB) -> int:
         stored_transaction_bytes = db.get(tx_id_bytes)
 
         if stored_transaction_bytes is None:
-            raise ProtocolError(
+            raise InvalidTransaction(
                 f"Could not find transaction '{tx_id}' in object database")
 
         stored_transaction = dict(
@@ -59,7 +70,7 @@ def _validate_input_index(tx_id: str, outpoint: dict, stored_transaction: dict) 
 
     # Check wether the index is valid in the referenced transaction
     if index >= len(stored_transaction["outputs"]):
-        raise ProtocolError(
+        raise InvalidTransaction(
             f"Given index '{index}' for transaction '{tx_id}' is invalid")
 
     return index
@@ -81,13 +92,13 @@ def _validate_input_signature(tx_id: str, input: dict, transaction: dict, stored
         input["sig"] = None
 
     # create hex of data for signature verification
-    canonicalized_transaction = canonicalize(cloned_transaction)
-    data_bytes = bytes.fromhex(canonicalized_transaction.hex())
+    canonical_tx = canonicalize(cloned_transaction)
+    data_bytes = bytes.fromhex(canonical_tx.hex())
 
     try:
         public_key.verify(signature_bytes, data_bytes)
     except InvalidSignature:
-        raise ProtocolError(
+        raise InvalidTransaction(
             f"Invalid signature for transaction '{tx_id}'")
 
 
@@ -98,5 +109,5 @@ def _validate_outputs(transaction: dict, total_input_value: int):
         total_output_value += int(output["value"])
 
     if total_input_value < total_output_value:
-        raise ProtocolError(
+        raise InvalidTransaction(
             "Sum of input values is smaller than the sum of the specified output values")
