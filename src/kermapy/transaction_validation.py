@@ -80,12 +80,12 @@ def _validate_input_signature(tx_id: str, input: dict, transaction: dict, stored
     for input in cloned_transaction["inputs"]:
         input["sig"] = None
 
-    minified_transaction = canonicalize(cloned_transaction)
-    data_hash = hashlib.sha256(minified_transaction)
-    data_hash_bytes = bytes.fromhex(data_hash.hexdigest())
+    # create hex of data for signature verification
+    canonicalized_transaction = canonicalize(cloned_transaction)
+    data_bytes = bytes.fromhex(canonicalized_transaction.hex())
 
     try:
-        public_key.verify(signature_bytes, data_hash_bytes)
+        public_key.verify(signature_bytes, data_bytes)
     except InvalidSignature:
         raise ProtocolError(
             f"Invalid signature for transaction '{tx_id}'")
