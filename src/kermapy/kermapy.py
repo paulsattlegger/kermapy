@@ -12,6 +12,7 @@ import config
 import messages
 import schemas
 import storage
+import transaction_validation
 from org.webpki.json.Canonicalize import canonicalize
 
 
@@ -219,6 +220,29 @@ class Node:
                 else:
                     logging.info(
                         f"Object with object ID: {object_id} is not in the database")
+            case "transaction":
+                try:
+                    transaction_validation.validate_transaction(
+                        message, self._db)
+                except transaction_validation.InvalidTransaction as e:
+                    logging.warning("Received invalid tx")
+                    raise ProtocolError(str(e))
+
+                canonical_tx = canonicalize(message["transaction"])
+                tx_hash = hashlib.sha256(canonical_tx).digest()
+
+                if self._db.get(tx_hash) is None:
+                    self._db.put(tx_hash, canonical_tx)
+                    logging.info(
+                        f"Saved tx '{tx_hash}' to database")
+                    self.broadcast({
+                        "type": "ihaveobject",
+                        "objectid": tx_hash
+                    })
+                else:
+                    logging.info(
+                        f"Tx '{tx_hash}' ignored, already in the database")
+
             case "hello":
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")
