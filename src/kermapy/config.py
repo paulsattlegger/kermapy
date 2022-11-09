@@ -7,7 +7,7 @@ def _get_bootstrap_nodes() -> dict[str, str]:
     return {item: "" for item in nodes}
 
 
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 BOOTSTRAP_NODES = _get_bootstrap_nodes()
 LISTEN_ADDR = os.getenv("LISTEN_ADDR", "0.0.0.0:18018")
 STORAGE_PATH = os.getenv("STORAGE_PATH", "../../data")
