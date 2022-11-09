@@ -136,7 +136,7 @@ class Node:
                 f"Unable to parse message from {conn.peer_name}: {e}")
             response = {
                 "type": "error",
-                "error": f"Failed to parse incoming message as JSON"
+                "error": "Failed to parse incoming message as JSON"
             }
             await conn.write_message(response)
         except ValidationError as e:
