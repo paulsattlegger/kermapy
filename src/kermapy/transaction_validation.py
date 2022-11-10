@@ -1,5 +1,6 @@
 import json
 import plyvel
+import copy
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.exceptions import InvalidSignature
@@ -79,7 +80,7 @@ def _validate_input_signature(tx_id: str, input: dict, transaction: dict, stored
     # Get signature from the new transaction
     signature_bytes = bytes.fromhex(input["sig"])
 
-    cloned_transaction = dict(transaction)
+    cloned_transaction = copy.deepcopy(transaction)
 
     for input in cloned_transaction["inputs"]:
         input["sig"] = None
