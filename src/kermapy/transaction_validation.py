@@ -28,13 +28,6 @@ def validate_transaction(message: dict, db: plyvel.DB):
     if "height" in transaction:
         pass
     else:
-        input_count = len(transaction["inputs"])
-        output_count = len(transaction["outputs"])
-
-        if input_count < output_count:
-            raise InvalidTransaction(
-                "Transactions sum of input values must be equal or exceed the sum of output values")
-
         total_input_value = _validate_inputs(transaction, db)
         _validate_outputs(transaction, total_input_value)
 
