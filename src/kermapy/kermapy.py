@@ -11,7 +11,6 @@ import config
 import messages
 import peers
 import schemas
-import storage
 import transaction_validation
 from org.webpki.json.Canonicalize import canonicalize
 
@@ -177,7 +176,7 @@ class Node:
                 canonical_object = canonicalize(object_)
                 object_id = hashlib.sha256(canonical_object)
                 if self._db.get(object_id.digest()) is None:
-                    
+
                     if object_["type"] == "transaction":
                         try:
                             transaction_validation.validate_transaction(
