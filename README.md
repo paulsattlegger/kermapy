@@ -14,7 +14,7 @@ services:
     environment:
       BOOTSTRAP_NODES: "128.130.122.101:18018"
       LISTEN_ADDR: "0.0.0.0:18018"
-      STORAGE_PATH: "/app/data/peers.json"
+      STORAGE_PATH: "/app/data"
       CLIENT_CONNECTIONS: 8
     stop_signal: SIGINT
     volumes:
