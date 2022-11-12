@@ -1,6 +1,10 @@
 import json
 import plyvel
 import copy
+import schemas
+
+from jsonschema.exceptions import ValidationError
+from jsonschema.validators import validate
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.exceptions import InvalidSignature
@@ -23,6 +27,12 @@ def validate_transaction(message: dict, db: plyvel.DB):
     Raises:
         InvalidTransaction: The error that is raised when the transaction is not valid
     """
+    try:
+        validate(message, schemas.ALL_TRANSACTIONS)
+    except ValidationError as e:
+        raise InvalidTransaction(
+                f"Transaction is not well formed: {e.message}")
+    
     transaction = message["transaction"]
 
     # is coinbase transaction

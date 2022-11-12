@@ -179,7 +179,6 @@ class Node:
                 if self._db.get(object_id.digest()) is None:
                     
                     if object_["type"] == "transaction":
-                        validate(object_, schemas.ALL_TRANSACTIONS)
                         try:
                             transaction_validation.validate_transaction(
                                 object_, self._db)
