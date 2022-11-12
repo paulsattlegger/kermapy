@@ -190,6 +190,16 @@ class Node:
                 canonical_object = canonicalize(object_)
                 object_id = hashlib.sha256(canonical_object)
                 if self._db.get(object_id.digest()) is None:
+                    
+                    if object_["type"] == "transaction":
+                        validate(object_, schemas.ALL_TRANSACTIONS)
+                        try:
+                            transaction_validation.validate_transaction(
+                                object_, self._db)
+                        except transaction_validation.InvalidTransaction as e:
+                            logging.warning("Received invalid tx")
+                            raise ProtocolError(str(e))
+
                     self._db.put(object_id.digest(), canonical_object)
                     logging.info(
                         f"Saved object: {object_} with object ID: {object_id.hexdigest()}")
@@ -220,28 +230,6 @@ class Node:
                 else:
                     logging.info(
                         f"Object with object ID: {object_id} is not in the database")
-            case "transaction":
-                try:
-                    transaction_validation.validate_transaction(
-                        message, self._db)
-                except transaction_validation.InvalidTransaction as e:
-                    logging.warning("Received invalid tx")
-                    raise ProtocolError(str(e))
-
-                canonical_tx = canonicalize(message["transaction"])
-                tx_hash = hashlib.sha256(canonical_tx).digest()
-
-                if self._db.get(tx_hash) is None:
-                    self._db.put(tx_hash, canonical_tx)
-                    logging.info(
-                        f"Saved tx '{tx_hash}' to database")
-                    self.broadcast({
-                        "type": "ihaveobject",
-                        "objectid": tx_hash
-                    })
-                else:
-                    logging.info(
-                        f"Tx '{tx_hash}' ignored, already in the database")
 
             case "hello":
                 raise ProtocolError(

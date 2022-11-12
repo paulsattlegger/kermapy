@@ -198,6 +198,14 @@ COINBASE_TRANSACTION = {
     "required": ["type", "height", "outputs"],
     "additionalProperties": False
 }
+
+ALL_TRANSACTIONS = {
+     "anyOf": [
+        COINBASE_TRANSACTION,
+        TRANSACTION
+     ]
+}
+
 MESSAGE = {
     "anyOf": [
         HELLO,
@@ -207,8 +215,6 @@ MESSAGE = {
         OBJECT,
         HAVE_OBJECT,
         GET_OBJECT,
-        TRANSACTION,
-        COINBASE_TRANSACTION,
         {
             "type": "object",
             "properties": {
