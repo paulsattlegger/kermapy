@@ -18,12 +18,12 @@ class TransactionValidationTests(TestCase):
                                b'"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9",'
                                b'"value":50000000000}],"type":"transaction"}')
 
-        message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":'
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
                              '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
                              '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
                              '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
                              '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
-                             'cfbae1e911f9","value":10}],"type":"transaction"},"type":"transaction"}')
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
 
         # Act & Assert
         try:
@@ -46,7 +46,7 @@ class TransactionValidationTests(TestCase):
         db = Mock(plyvel.DB)
         db.get.side_effect = mock_get
 
-        message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":"582b0efba0ea9756541e'
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":"582b0efba0ea9756541e'
                              '8ff30cae1b76e9ea088b20e23576a1d5cc688202963c"},'
                              '"sig":"7c86433d9004a7ce2fb26234224b66fb94d5f19db8abe99a768d251f36c8e3a2b1a8c21'
                              '83015a940291a636c5c357eeee66f97e4a8e9e6c129935eedc767080e"},'
@@ -56,7 +56,7 @@ class TransactionValidationTests(TestCase):
                              'ad21c6d5995726d04713ee8063e5ae00f0900fc630e8651fa542eb04"}],'
                              '"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0a'
                              'ec5f7a","value":5},{"pubkey": "8bc6cdd11175a292ea2933ead0626bece01df76e8a2a5d5d23'
-                             '99c6838605c880","value":10}],"type":"transaction"},"type":"transaction"}')
+                             '99c6838605c880","value":10}],"type":"transaction"}')
 
         # Act & Assert
         try:
@@ -70,11 +70,11 @@ class TransactionValidationTests(TestCase):
         db.get.return_value = (b'{"height":0,"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c04692'
                                b'17c8f5cfbae1e911f9","value":50000000000}],"type":"transaction"}')
 
-        message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4'
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4'
                              'c39a7931cc88dae3417871219715a5e374af"},"sig":"8cad10c82c38411b89386adb399696e9df34478a'
                              'a571326883f4a27f16fcdc3d4852d87a55571a9cca886b6fe7b47a4443177cb7f806ad071306307bfb4f480b"}],'
                              '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9",'
-                             '"value":10}],"type":"transaction"},"type":"transaction"}')
+                             '"value":10}],"type":"transaction"}')
 
         # Act & Assert
         try:
@@ -91,11 +91,11 @@ class TransactionValidationTests(TestCase):
         db.get.return_value = (b'{"height":0,"outputs":[{"pubkey":"a2ba5aebc27d7ffb476e45cdef00146eaabc2614eeb0b3a878541d9'
                                b'6605e5a52","value":50000000000}],"type":"transaction"}')
 
-        message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931'
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931'
                              'cc88dae3417871219715a5e374af"},"sig":"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602b'
                              'fefb0494726c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
                              '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9",'
-                             '"value":10}],"type":"transaction"},"type":"transaction"}')
+                             '"value":10}],"type":"transaction"}')
 
         # Act & Assert
         try:
@@ -111,11 +111,11 @@ class TransactionValidationTests(TestCase):
         db = Mock(plyvel.DB)
         db.get.return_value = None
 
-        message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931cc8'
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931cc8'
                              '8dae3417871219715a5e374af"},"sig":"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb0'
                              '494726c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
                              '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9",'
-                             '"value":10}],"type":"transaction"},"type":"transaction"}')
+                             '"value":10}],"type":"transaction"}')
 
         # Act & Assert
         try:
@@ -132,10 +132,10 @@ class TransactionValidationTests(TestCase):
         db.get.return_value = (b'{"height":0,"outputs":[{"pubkey":"a2ba5aebc27d7ffb476e45cdef00146eaabc2614eeb0b3a878541d96605e5a52",'
                                b'"value":50000000000}],"type":"transaction"}')
 
-        message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":2,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417'
+        message = json.loads('{"inputs":[{"outpoint":{"index":2,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417'
                              '871219715a5e374af"},"sig":"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb0494726c519e922669'
                              '57429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b'
-                             '551cc8fc47c0469217c8f5cfbae1e911f9","value":10}],"type":"transaction"},"type":"transaction"}')
+                             '551cc8fc47c0469217c8f5cfbae1e911f9","value":10}],"type":"transaction"}')
 
         # Act & Assert
         try:
@@ -152,10 +152,10 @@ class TransactionValidationTests(TestCase):
         db.get.return_value = (b'{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f7a",'
                                b'"value":5}],"type":"transaction"}')
 
-        message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417'
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417'
                              '871219715a5e374af"},"sig":"129493e34b72ff3f86b0e31d9e7f92b0adde10a201134c93de5564c543f6a5116b3d0a1f71a853'
                              '21e4a0c12ea4fb2c69003e5235b18729c6a6e49c74eb516003"}],"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb'
-                             '7ae5fa28e05c1576b1fcf97d1a0aec5f7a","value":10}],"type":"transaction"},"type":"transaction"}')
+                             '7ae5fa28e05c1576b1fcf97d1a0aec5f7a","value":10}],"type":"transaction"}')
 
         # Act & Assert
         try:

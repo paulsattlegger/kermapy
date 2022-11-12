@@ -16,24 +16,22 @@ class InvalidTransaction(Exception):
     pass
 
 
-def validate_transaction(message: dict, db: plyvel.DB):
+def validate_transaction(transaction: dict, db: plyvel.DB):
     """
     Validates a transaction and raises an error, if it is invalid
 
     Args:
-        message (dict): The transaction message that should be validated
+        transaction (dict): The transaction that should be validated
         db (plyvel.DB): The database in which the referenced txs should be searched
 
     Raises:
         InvalidTransaction: The error that is raised when the transaction is not valid
     """
     try:
-        validate(message, schemas.ALL_TRANSACTIONS)
+        validate(transaction, schemas.ALL_TRANSACTIONS)
     except ValidationError as e:
         raise InvalidTransaction(
-                f"Transaction is not well formed: {e.message}")
-    
-    transaction = message["transaction"]
+            f"Transaction is not well formed: {e.message}")
 
     # is coinbase transaction
     if "height" in transaction:
