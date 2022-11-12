@@ -68,7 +68,7 @@ class TransactionValidationTests(TestCase):
         # Arrange
         db = Mock(plyvel.DB)
         db.get.return_value = (b'{"height":0,"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c04692'
-                               '17c8f5cfbae1e911f9","value":50000000000}],"type":"transaction"}')
+                               b'17c8f5cfbae1e911f9","value":50000000000}],"type":"transaction"}')
 
         message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4'
                              'c39a7931cc88dae3417871219715a5e374af"},"sig":"8cad10c82c38411b89386adb399696e9df34478a'
@@ -89,7 +89,7 @@ class TransactionValidationTests(TestCase):
         # Arrange
         db = Mock(plyvel.DB)
         db.get.return_value = (b'{"height":0,"outputs":[{"pubkey":"a2ba5aebc27d7ffb476e45cdef00146eaabc2614eeb0b3a878541d9'
-                               '6605e5a52","value":50000000000}],"type":"transaction"}')
+                               b'6605e5a52","value":50000000000}],"type":"transaction"}')
 
         message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931'
                              'cc88dae3417871219715a5e374af"},"sig":"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602b'
@@ -130,7 +130,7 @@ class TransactionValidationTests(TestCase):
         # Arrange
         db = Mock(plyvel.DB)
         db.get.return_value = (b'{"height":0,"outputs":[{"pubkey":"a2ba5aebc27d7ffb476e45cdef00146eaabc2614eeb0b3a878541d96605e5a52",'
-                               '"value":50000000000}],"type":"transaction"}')
+                               b'"value":50000000000}],"type":"transaction"}')
 
         message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":2,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417'
                              '871219715a5e374af"},"sig":"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb0494726c519e922669'
@@ -150,7 +150,7 @@ class TransactionValidationTests(TestCase):
         # Arrange
         db = Mock(plyvel.DB)
         db.get.return_value = (b'{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f7a",'
-                               '"value":5}],"type":"transaction"}')
+                               b'"value":5}],"type":"transaction"}')
 
         message = json.loads('{"transaction":{"inputs":[{"outpoint":{"index":0,"txid":"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417'
                              '871219715a5e374af"},"sig":"129493e34b72ff3f86b0e31d9e7f92b0adde10a201134c93de5564c543f6a5116b3d0a1f71a853'
