@@ -165,3 +165,321 @@ class TransactionValidationTests(TestCase):
             self.assertIn("Sum of input values is smaller", str(e))
         except:
             self.fail("Wrong error was raised")
+
+    # Schema validation tests
+
+    def test_validateTransaction_coinbase_shouldBeValid(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f7a",'
+                             '"value":5}],"type":"transaction"}')
+
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+        except:
+            self.fail("An exception was thrown")
+
+    def test_validateTransaction_coinbase_pubKeyToShort_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f7",'
+                             '"value":5}],"type":"transaction"}')
+
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_coinbase_pubKeyToLong_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f777",'
+                             '"value":5}],"type":"transaction"}')
+
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_coinbase_missingHeight_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f777",'
+                             '"value":5}],"type":"transaction"}')
+
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_coinbase_missingType_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f777",'
+                             '"value":5}]}')
+
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_coinbase_negativeValue_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f7a",'
+                             '"value":-5}],"type":"transaction"}')
+
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_missingType_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":10}]}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_negativeValue_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":-10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_negativeIndex_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":-1,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_signatureToShort_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a680"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_signatureToLong_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a68056"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_signatureToLong_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdfg2bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_missingInputs_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_missingOutputs_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_outpoint_pubKeyToShort_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374a"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_outpoint_pubKeyToLong_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374afa"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_outputs_pubKeyToShort_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_outputs_pubKeyToShort_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5a'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
+
+    def test_validateTransaction_tx_outputs_pubKeyInvalidHex_shouldRaiseError(self):
+        # Arrange
+        db = Mock(plyvel.DB)
+        message = json.loads('{"inputs":[{"outpoint":{"index":0,"txid":'
+                             '"1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"},"sig":'
+                             '"1d0d7d774042607c69a87ac5f1cdf92bf474c25fafcc089fe667602bfefb049472'
+                             '6c519e92266957429ced875256e6915eb8cea2ea66366e739415efc47a6805"}],'
+                             '"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8fg'
+                             'cfbae1e911f9","value":10}],"type":"transaction"}')
+        # Act & Assert
+        try:
+            transaction_validation.validate_transaction(message, db)
+            self.fail("Expected an error but none was raised")
+        except transaction_validation.InvalidTransaction as e:
+            self.assertIn("not well formed", str(e))
+        except:
+            self.fail("Wrong error was raised")
