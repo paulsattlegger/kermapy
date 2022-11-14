@@ -1,12 +1,11 @@
-FROM python:3.11.0-slim as builder
+FROM python:3.11-bullseye as builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK 1
 
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install --assume-yes --no-install-recommends g++ libleveldb-dev && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y g++ libleveldb-dev
 
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
@@ -17,8 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM python:3.11.0-slim
 
 RUN apt-get update && \
-    apt-get install --assume-yes --no-install-recommends libleveldb1d && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y libleveldb1d
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
