@@ -157,8 +157,8 @@ class TransactionValidationTests(TestCase):
     def test_validateTransaction_coinbase_shouldBeValid(self):
         # Arrange
         db = Mock(plyvel.DB)
-        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f7a",'
-                             '"value":5}],"type":"transaction"}')
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1'
+                             'a0aec5f7a","value":5}],"type":"transaction"}')
 
         # Act & Assert
         transaction_validation.validate_transaction(message, db)
@@ -166,8 +166,8 @@ class TransactionValidationTests(TestCase):
     def test_validateTransaction_coinbase_pubKeyToShort_shouldRaiseError(self):
         # Arrange
         db = Mock(plyvel.DB)
-        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f7",'
-                             '"value":5}],"type":"transaction"}')
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1'
+                             'a0aec5f7","value":5}],"type":"transaction"}')
 
         # Act & Assert
         try:
@@ -179,8 +179,8 @@ class TransactionValidationTests(TestCase):
     def test_validateTransaction_coinbase_pubKeyToLong_shouldRaiseError(self):
         # Arrange
         db = Mock(plyvel.DB)
-        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f777",'
-                             '"value":5}],"type":"transaction"}')
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a'
+                             '0aec5f777","value":5}],"type":"transaction"}')
 
         # Act & Assert
         try:
@@ -205,8 +205,8 @@ class TransactionValidationTests(TestCase):
     def test_validateTransaction_coinbase_missingType_shouldRaiseError(self):
         # Arrange
         db = Mock(plyvel.DB)
-        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f777",'
-                             '"value":5}]}')
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1'
+                             'a0aec5f777","value":5}]}')
 
         # Act & Assert
         try:
@@ -218,8 +218,8 @@ class TransactionValidationTests(TestCase):
     def test_validateTransaction_coinbase_negativeValue_shouldRaiseError(self):
         # Arrange
         db = Mock(plyvel.DB)
-        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a0aec5f7a",'
-                             '"value":-5}],"type":"transaction"}')
+        message = json.loads('{"height":0,"outputs":[{"pubkey":"344fd304e608eb462e733c4e5eb4eb7ae5fa28e05c1576b1fcf97d1a'
+                             '0aec5f7a","value":-5}],"type":"transaction"}')
 
         # Act & Assert
         try:
