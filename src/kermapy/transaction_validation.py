@@ -55,8 +55,7 @@ def _validate_inputs(transaction: dict, db: plyvel.DB) -> int:
             raise InvalidTransaction(
                 f"Could not find transaction '{tx_id}' in object database")
 
-        stored_transaction = dict(
-            json.loads(stored_transaction_bytes))
+        stored_transaction:dict = json.loads(stored_transaction_bytes)
 
         index = _validate_input_index(tx_id, outpoint, stored_transaction)
         _validate_input_signature(
@@ -78,7 +77,7 @@ def _validate_input_index(tx_id: str, outpoint: dict, stored_transaction: dict) 
     return index
 
 
-def _validate_input_signature(tx_id: str, input: dict, transaction: dict, stored_transaction: dict, index: int):
+def _validate_input_signature(tx_id: str, input: dict, transaction: dict, stored_transaction: dict, index: int) -> None:
     # Get public key from the referenced transaction
     output = stored_transaction["outputs"][index]
     public_key_bytes = bytes.fromhex(output["pubkey"])
@@ -104,7 +103,7 @@ def _validate_input_signature(tx_id: str, input: dict, transaction: dict, stored
             f"Invalid signature for transaction '{tx_id}'")
 
 
-def _validate_outputs(transaction: dict, total_input_value: int):
+def _validate_outputs(transaction: dict, total_input_value: int) -> None:
     total_output_value = 0
 
     for output in transaction["outputs"]:
