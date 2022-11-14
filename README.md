@@ -4,13 +4,18 @@ Kerma protocol node in Python
 
 ## How to use
 
+Via `run.sh`
+
+If you want to run the application via `run.sh`, be aware that docker must be installed.
+
+
 Via `docker-compose.yml`
 
 ```yaml
 version: "3"
 services:
   chain-node:
-    image: ghcr.io/paulsattlegger/kermapy:v1.0.5
+    image: ghcr.io/paulsattlegger/kermapy:v1.1.0
     environment:
       BOOTSTRAP_NODES: "128.130.122.101:18018"
       LISTEN_ADDR: "0.0.0.0:18018"
