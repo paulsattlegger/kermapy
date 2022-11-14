@@ -9,7 +9,7 @@ Via `run.sh`
 If you want to run the application via `run.sh`, be aware that docker must be installed.
 
 
-Via `docker-compose.yml`
+Via `docker-compose.yml` (requires Github access token)
 
 ```yaml
 version: "3"
