@@ -1,14 +1,14 @@
 FROM python:3.11 as builder
 
-ENV PIP_DISABLE_PIP_VERSION_CHECK 1
-ENV PIP_NO_CACHE_DIR 1
+ARG DEBIAN_FRONTEND=noninteractive
+ARG DEBCONF_NOWARNINGS=yes
+ARG PIP_DISABLE_PIP_VERSION_CHECK=1
+ARG PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y g++ libleveldb-dev && \
-    # remove state information for each package (unnecessary for docker image)
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y libleveldb-dev
 
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
@@ -19,9 +19,12 @@ RUN pip install --use-pep517 -r requirements.txt
 
 FROM python:3.11-slim
 
-RUN apt-get update && \
-    apt-get install -y libleveldb1d && \
-    # remove state information for each package (unnecessary for docker image)
+ARG DEBIAN_FRONTEND=noninteractive
+ARG DEBCONF_NOWARNINGS=yes
+
+COPY --from=builder /var/lib/apt/lists /var/lib/apt/lists
+
+RUN apt-get install -y libleveldb1d && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
