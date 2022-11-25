@@ -1,14 +1,13 @@
 import asyncio
-import hashlib
 import json
 import logging
 
-import plyvel
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
 import config
 import messages
+import objects
 import peers
 import schemas
 import transaction_validation
@@ -59,7 +58,7 @@ class Node:
         self._client_conn_sem: asyncio.Semaphore = asyncio.Semaphore(
             config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
-        self._db: plyvel.DB = plyvel.DB(storage_path, create_if_missing=True)
+        self._objs: objects.Objects = objects.Objects(storage_path)
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -77,7 +76,7 @@ class Node:
             await self.shutdown()
 
     async def shutdown(self):
-        self._db.close()
+        self._objs.close()
         if self._server:
             self._server.close()
         for background_task in self._background_tasks:
@@ -172,53 +171,55 @@ class Node:
                 self._peers.add_all(message["peers"])
                 self._peers.dump()
             case "object":
-                object_ = message["object"]
-                canonical_object = canonicalize(object_)
-                object_id = hashlib.sha256(canonical_object)
-                if self._db.get(object_id.digest()) is None:
-
-                    if object_["type"] == "transaction":
-                        try:
-                            transaction_validation.validate_transaction(
-                                object_, self._db)
-                        except transaction_validation.InvalidTransaction as e:
-                            logging.warning("Received invalid tx")
-                            raise ProtocolError(str(e))
-
-                    self._db.put(object_id.digest(), canonical_object)
+                obj = message["object"]
+                object_id = objects.Objects.id(obj)
+                if object_id not in self._objs:
+                    if obj["type"] == "transaction":
+                        self.handle_transaction(obj)
+                    elif obj["type"] == "object":
+                        pass
+                    self._objs.put(obj)
                     logging.info(
-                        f"Saved object: {object_} with object ID: {object_id.hexdigest()}")
+                        f"Saved object: {obj} with object ID: {object_id}")
                     self.broadcast({
                         "type": "ihaveobject",
-                        "objectid": object_id.hexdigest()
+                        "objectid": object_id
                     })
                 else:
                     logging.info(
-                        f"Object: {object_} ignored, already in the database")
+                        f"Object: {obj} ignored, already in the database")
             case "ihaveobject":
                 object_id = message["objectid"]
-                if self._db.get(bytes.fromhex(object_id)) is None:
+                if object_id in self._objs:
+                    logging.info(
+                        f"Object with object ID: {object_id} is already in the database")
+                else:
                     return {
                         "type": "getobject",
                         "objectid": object_id
                     }
-                else:
-                    logging.info(
-                        f"Object with object ID: {object_id} is already in the database")
             case "getobject":
                 object_id = message["objectid"]
-                if object_ := self._db.get(bytes.fromhex(object_id)):
+                if object_id in self._objs:
                     return {
                         "type": "object",
-                        "object": json.loads(object_)
+                        "object": self._objs.get(object_id)
                     }
                 else:
-                    logging.info(
-                        f"Object with object ID: {object_id} is not in the database")
-
+                    logging.info(f"Object with object ID: {object_id} is not in the database")
             case "hello":
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")
+
+    def handle_transaction(self, transaction: dict) -> None:
+        try:
+            transaction_validation.validate_transaction(transaction, self._objs)
+        except transaction_validation.InvalidTransaction as e:
+            logging.warning("Received invalid tx")
+            raise ProtocolError(str(e))
+
+    async def handle_block(self, block: dict) -> None:
+        pass
 
 
 async def main():
