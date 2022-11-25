@@ -99,6 +99,17 @@ GET_OBJECT = {
     "required": ["type", "objectid"],
     "additionalProperties": False
 }
+HEXIFIED_VALUE_32 = {
+    "type": "string",
+    "pattern": r"^[0-9a-f]+$",
+    "minLength": 64,
+    "maxLength": 64
+}
+PRINTABLE_ASCII_UP_TO_128 = {
+    "type": "string",
+    "pattern": "^[ -~]*$",
+    "maxlength": 128
+}
 TRANSACTION = {
     "type": "object",
     "properties": {
@@ -114,12 +125,7 @@ TRANSACTION = {
                     "outpoint": {
                         "type": "object",
                         "properties": {
-                            "txid": {
-                                "type": "string",
-                                "pattern": r"^[0-9a-f]+$",
-                                "minLength": 64,
-                                "maxLength": 64
-                            },
+                            "txid": HEXIFIED_VALUE_32,
                             "index": {
                                 "type": "integer",
                                 "minimum": 0
@@ -144,12 +150,7 @@ TRANSACTION = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "pubkey": {
-                        "type": "string",
-                        "pattern": r"^[0-9a-f]+$",
-                        "minLength": 64,
-                        "maxLength": 64
-                    },
+                    "pubkey": HEXIFIED_VALUE_32,
                     "value": {
                         "type": "integer",
                         "minimum": 0
@@ -179,12 +180,7 @@ COINBASE_TRANSACTION = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "pubkey": {
-                        "type": "string",
-                        "pattern": r"^[0-9a-f]+$",
-                        "minLength": 64,
-                        "maxLength": 64
-                    },
+                    "pubkey": HEXIFIED_VALUE_32,
                     "value": {
                         "type": "integer",
                         "minimum": 0
@@ -198,14 +194,36 @@ COINBASE_TRANSACTION = {
     "required": ["type", "height", "outputs"],
     "additionalProperties": False
 }
-
 ALL_TRANSACTIONS = {
-     "anyOf": [
+    "anyOf": [
         COINBASE_TRANSACTION,
         TRANSACTION
-     ]
+    ]
 }
-
+BLOCK = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["block"]
+        },
+        "txids": {
+            "type": "array",
+            "items": HEXIFIED_VALUE_32
+        },
+        "nonce": HEXIFIED_VALUE_32,
+        "previd": HEXIFIED_VALUE_32,
+        "created": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "T": "00000002af000000000000000000000000000000000000000000000000000000",
+        "miner": PRINTABLE_ASCII_UP_TO_128,
+        "note": PRINTABLE_ASCII_UP_TO_128
+    },
+    "required": ["type", "txids", "nonce", "previd", "created", "T"],  # "miner" and "note" are optional
+    "additionalProperties": False
+}
 MESSAGE = {
     "anyOf": [
         HELLO,

@@ -127,7 +127,7 @@ class Node:
                 request = await conn.read_message()
                 logging.info(
                     f"Received message {request} from {conn.peer_name}")
-                if response := self.handle_message(request):
+                if response := await self.handle_message(request):
                     await conn.write_message(response)
         except (EOFError, ConnectionError) as e:
             logging.debug(e)
@@ -159,7 +159,7 @@ class Node:
             await conn.close()
             self._connections.discard(conn)
 
-    def handle_message(self, message: dict) -> dict | None:
+    async def handle_message(self, message: dict) -> dict | None:
         validate(message, schemas.MESSAGE)
         match message["type"]:
             case "getpeers":
@@ -177,7 +177,7 @@ class Node:
                     if obj["type"] == "transaction":
                         self.handle_transaction(obj)
                     elif obj["type"] == "object":
-                        pass
+                        await self.handle_block(obj)
                     self._objs.put(obj)
                     logging.info(
                         f"Saved object: {obj} with object ID: {object_id}")
@@ -218,8 +218,42 @@ class Node:
             logging.warning("Received invalid tx")
             raise ProtocolError(str(e))
 
+    async def resolve_shallow(self, object_id: str, timeout: float):
+        event = self._objs.event_for(object_id)
+        self.broadcast({
+            "type": "getobject",
+            "objectid": object_id
+        })
+        await asyncio.wait_for(event.wait(), timeout)
+
     async def handle_block(self, block: dict) -> None:
-        pass
+        # Check that the block contains all required fields and that they are of the format and ensure the target is the
+        # one required
+        validate(block, schemas.BLOCK)
+        # Check the proof-of-work
+        if int(objects.Objects.id(block)) >= int(block['T']):
+            raise ProtocolError("Received block does not satisfy the proof-of-work equation")
+        # Check that for all the txids in the block, you have the corresponding transaction in your
+        # local object database. If not, then send a "getobject" message to your peers in order
+        # to get the transaction.
+        unknown_txids = [txid for txid in block["txids"] if txid not in self._objs]
+        try:
+            await asyncio.gather(self.resolve_shallow(txid, 5) for txid in unknown_txids)
+        except asyncio.TimeoutError:
+            raise ProtocolError("Unable to receive all the txids of the block")
+        # TODO For each transaction in the block, check that the transaction is valid, and update your
+        #  UTXO set based on the transaction
+        txs = [self._objs.get(txid) for txid in block["txids"]]
+        coinbase_txs = [tx for tx in txs if len(tx["inputs"]) == 0]
+        # check for coinbase transactions, there can be at most one coinbase transaction in a block
+        if len(coinbase_txs) > 1:
+            raise ProtocolError("Received block contains more than one coinbase transaction")
+        if len(coinbase_txs) == 1:
+            if block["txids"][0] != objects.Objects.id(coinbase_txs[0]):
+                raise ProtocolError("Received block with coinbase transaction not at index 0")
+        # TODO The coinbase transaction cannot be spent in another transaction in the same block (this is in order to
+        #  make the law of conservation for the coinbase transaction easier to verify).
+        # TODO Validate the coinbase transaction if there is one.
 
 
 async def main():
