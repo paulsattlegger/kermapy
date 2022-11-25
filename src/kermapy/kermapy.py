@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
@@ -59,6 +60,7 @@ class Node:
             config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
+        self.ignore_pow = False
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -229,11 +231,13 @@ class Node:
     async def handle_block(self, block: dict) -> None:
         # Check that the block contains all required fields and that they are of the format
         validate(block, schemas.BLOCK)
-        # ensure the target is the one required
+        # Ensure the target is the one required
         if block["T"] != "00000002af000000000000000000000000000000000000000000000000000000":
             raise ProtocolError("Received block with invalid target")
+        if block['created'] > time.time():
+            raise ProtocolError("Received block with timestamp in the future")
         # Check the proof-of-work
-        if int(objects.Objects.id(block), base=16) >= int(block['T'], base=16):
+        if int(objects.Objects.id(block), base=16) >= int(block['T'], base=16) and not self.ignore_pow:
             raise ProtocolError("Received block does not satisfy the proof-of-work equation")
         # Check that for all the txids in the block, you have the corresponding transaction in your
         # local object database. If not, then send a "getobject" message to your peers in order

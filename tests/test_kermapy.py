@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 from unittest import IsolatedAsyncioTestCase
 
@@ -67,6 +68,7 @@ class KermaTestCase(IsolatedAsyncioTestCase):
 
     def tearDown(self):
         shutil.rmtree(self._tmp_directory)
+        self._node.ignore_pow = False
 
     async def asyncTearDown(self):
         await self._node.shutdown()
@@ -318,7 +320,7 @@ class Task2TestCase(KermaTestCase):
 class Task3TestCase(KermaTestCase):
     # 1. On receiving an object message from Grader 1 containing any invalid block, Grader 1 must receive an error
     #    message and the transaction must not be gossiped to Grader 2.
-    async def test_sendBlockIncorrectTarget_shouldReceiveErrorMessage(self):
+    async def test_handle_block_incorrectTarget_shouldRaiseProtocolError(self):
         # The block has an incorrect target.
         block = {
             "T": "0000000000000000000000000000000000000000000000000000000000000000", "created": 1624229079,
@@ -334,7 +336,7 @@ class Task3TestCase(KermaTestCase):
         the_exception = cm.exception
         self.assertIn("invalid target", str(the_exception))
 
-    async def test_sendBlockProofOfWorkInvalid_shouldReceiveErrorMessage(self):
+    async def test_handle_block_proofOfWorkInvalid_shouldRaiseProtocolError(self):
         # The block has an invalid proof-of-work.
         block = {
             "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
@@ -350,24 +352,90 @@ class Task3TestCase(KermaTestCase):
         the_exception = cm.exception
         self.assertIn("proof-of-work", str(the_exception))
 
+    async def test_handle_block_timestampFuture_shouldRaiseProtocolError(self):
+        # The block has an invalid proof-of-work.
+        block = {
+            "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": int(time.time() + 3600),
+            "miner": "TUWien-Kerma",
+            "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+            "note": "First block. Yayy, I have 50 ker now!!",
+            "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+            "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
+        }
+        with self.assertRaises(ProtocolError) as cm:
+            await self._node.handle_block(block)
+
+        the_exception = cm.exception
+        self.assertIn("future", str(the_exception))
+
     async def test_sendBlockInvalidTransaction_shouldReceiveErrorMessage(self):
         # There is an invalid transaction in the block.
-        pass
+        client1 = await Client.new_established()
 
-    async def test_sendBlockInvalidTransactionSpendSameOutput_shouldReceiveErrorMessage(self):
-        # There are two transactions in the block that spend the same output.
-        pass
+        self._node.ignore_pow = True
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
+                    "miner": "Kermapy", "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "note": "Invalid_TX_no_outputs",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                    "txids": ["2374cb9b22bb0b1d865397e4ee88de4532e8fbf5232a32f956298d703ea8f913"], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        getobject_message = {
+            "type": "getobject",
+            "objectid": "2374cb9b22bb0b1d865397e4ee88de4532e8fbf5232a32f956298d703ea8f913"
+        }
+
+        self.assertDictEqual(getobject_message, await client1.read_dict())
+
+        tx_message = {
+            "object": {
+                "inputs": [{
+                    "outpoint": {
+                        "index": 0, "txid": "29e793963f3933af943d20cb3b8da893488c2e4fd169d88fd47c8081a368794c"
+                    },
+                    "sig": "648d0db001fe44edda0493b9635a9747b5f1b7e4b90032c17a3abc2aa874f4e2a0090ad7f43d1ce22614a52f6a13797dc2908e602a1c46c8cf32ec2ad910600b"
+                }],
+                "outputs": [
+                    {"pubkey": "8bd22d5b544887762cd6104b433d93e1f9a5f451fe47d641733e517d9551ab05", "value": 51}],
+                "type": "transaction"
+            }, "type": "object"
+        }
+
+        await client1.write_dict(tx_message)
+
+        self.assertIn("error", await client1.read_dict())
+
+        await client1.close()
 
     async def test_sendBlockInvalidTransactionSpendAnOutput_shouldReceiveErrorMessage(self):
         # There are two transactions in the block that spend the same output.
         pass
+        # TODO
 
-    async def test_sendBlockInvalidTransactionCoinbaseExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
-        # A transaction attempts to spend an output
+    async def test_sendBlockCoinbaseTransactionExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
+        # The coinbase transaction has an output that exceeds the block rewards and the fees.
         pass
+        # TODO
 
-    async def test_sendBlockTimestampBeforeGenesis_shouldReceiveErrorMessage(self):
+    async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
         pass
+        # TODO
+
+    async def test_sendBlockTwoCoinbaseTransactions_shouldReceiveErrorMessage(self):
+        pass
+        # TODO
+
+    async def test_sendBlockCoinbaseTransactionSpentInAnotherTransactionSameBlock_shouldReceiveErrorMessage(self):
+        pass
+        # TODO
 
     # 2. On receiving an object message from Grader 1 containing a valid block, the block must
     #    be gossiped to Grader 2 by sending an ihaveobject message with the correct blockid.
@@ -429,11 +497,39 @@ class Task3TestCase(KermaTestCase):
         await client1.close()
         await client2.close()
 
+    async def test_sendValidBlockUnknownTxGrader1_shouldFailAfter5Sec(self):
+        client1 = await Client.new_established()
+        client2 = await Client.new_established()
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
+                    "miner": "TUWien-Kerma",
+                    "nonce": "000000000000000000000000af298d050e4395d69670b12b7f4100048da50800",
+                    "note": "First block. Yayy, I have 50 ker now!!",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                    "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        # skip getobject
+        await client1.readline()
+        await client2.readline()
+
+        self.assertIn("error", await client1.read_dict())
+
+        await client1.close()
+        await client2.close()
+
     async def test_sendInvalidBlockGrader1_shouldNotReceiveIHaveObjectGrader2(self):
         client1 = await Client.new_established()
         client2 = await Client.new_established()
 
-        obj = {
+        block_message = {
             "object": {
                 "T": "0000000000000000000000000000000000000000000000000000000000000000", "created": 1624229079,
                 "miner": "TUWien-Kerma",
@@ -441,8 +537,10 @@ class Task3TestCase(KermaTestCase):
                 "note": "First block. Yayy, I have 50 ker now!!",
                 "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
                 "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
-            }, "type": "block"
+            }, "type": "object"
         }
+
+        await client1.write_dict(block_message)
 
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(client2.readline(), 0.5)
