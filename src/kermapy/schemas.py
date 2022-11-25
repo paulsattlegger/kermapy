@@ -60,17 +60,6 @@ ERROR = {
     "required": ["type", "error"],
     "additionalProperties": False
 }
-OBJECT = {
-    "type": "object",
-    "properties": {
-        "type": {
-            "type": "string",
-            "enum": ["object"]
-        },
-    },
-    "required": ["type"],
-    "additionalProperties": True
-}
 HAVE_OBJECT = {
     "type": "object",
     "properties": {
@@ -212,16 +201,34 @@ BLOCK = {
             "items": HEXIFIED_VALUE_32
         },
         "nonce": HEXIFIED_VALUE_32,
-        "previd": HEXIFIED_VALUE_32,
+        "previd": {
+            "anyOf": [HEXIFIED_VALUE_32, {
+                "type": "null"
+            }]
+        },
         "created": {
             "type": "integer",
             "minimum": 0
         },
-        "T": "00000002af000000000000000000000000000000000000000000000000000000",
+        "T": HEXIFIED_VALUE_32,
         "miner": PRINTABLE_ASCII_UP_TO_128,
         "note": PRINTABLE_ASCII_UP_TO_128
     },
     "required": ["type", "txids", "nonce", "previd", "created", "T"],  # "miner" and "note" are optional
+    "additionalProperties": False
+}
+OBJECT = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["object"]
+        },
+        "object": {
+            "anyOf": [ALL_TRANSACTIONS, BLOCK]
+        }
+    },
+    "required": ["type", "object"],
     "additionalProperties": False
 }
 MESSAGE = {

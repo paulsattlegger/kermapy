@@ -176,7 +176,7 @@ class Node:
                 if object_id not in self._objs:
                     if obj["type"] == "transaction":
                         self.handle_transaction(obj)
-                    elif obj["type"] == "object":
+                    elif obj["type"] == "block":
                         await self.handle_block(obj)
                     self._objs.put(obj)
                     logging.info(
@@ -227,18 +227,20 @@ class Node:
         await asyncio.wait_for(event.wait(), timeout)
 
     async def handle_block(self, block: dict) -> None:
-        # Check that the block contains all required fields and that they are of the format and ensure the target is the
-        # one required
+        # Check that the block contains all required fields and that they are of the format
         validate(block, schemas.BLOCK)
+        # ensure the target is the one required
+        if block["T"] != "00000002af000000000000000000000000000000000000000000000000000000":
+            raise ProtocolError("Received block with invalid target")
         # Check the proof-of-work
-        if int(objects.Objects.id(block)) >= int(block['T']):
+        if int(objects.Objects.id(block), base=16) >= int(block['T'], base=16):
             raise ProtocolError("Received block does not satisfy the proof-of-work equation")
         # Check that for all the txids in the block, you have the corresponding transaction in your
         # local object database. If not, then send a "getobject" message to your peers in order
         # to get the transaction.
         unknown_txids = [txid for txid in block["txids"] if txid not in self._objs]
         try:
-            await asyncio.gather(self.resolve_shallow(txid, 5) for txid in unknown_txids)
+            await asyncio.gather(*[self.resolve_shallow(txid, 5) for txid in unknown_txids])
         except asyncio.TimeoutError:
             raise ProtocolError("Unable to receive all the txids of the block")
         # TODO For each transaction in the block, check that the transaction is valid, and update your

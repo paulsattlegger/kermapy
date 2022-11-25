@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import shutil
 import sys
@@ -8,7 +9,8 @@ from unittest import IsolatedAsyncioTestCase
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/kermapy')))
 
-from src.kermapy.kermapy import Node  # noqa: E402
+from kermapy import Node, ProtocolError  # noqa
+from org.webpki.json.Canonicalize import canonicalize  # noqa
 
 HOST = "127.0.0.1"
 PORT = 19000
@@ -36,9 +38,15 @@ class Client:
     async def readline(self) -> bytes:
         return await self._reader.readline()
 
+    async def read_dict(self) -> dict:
+        return json.loads(await self._reader.readline())
+
     async def write(self, message: bytes):
         self._writer.write(message)
         await self._writer.drain()
+
+    async def write_dict(self, message: dict):
+        await self.write(canonicalize(message) + b"\n")
 
     async def close(self) -> None:
         self._writer.close()
@@ -236,7 +244,6 @@ class Task2TestCase(KermaTestCase):
         self.assertIn(b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
         self.assertIn(b'"type":"object"', response)
         await client.close()
-        
 
     async def test_getSameObjectOtherClient(self):
         # If Grader 1 sends a new valid transaction object and then Grader 2 requests the same object,
@@ -299,12 +306,148 @@ class Task2TestCase(KermaTestCase):
                            b'"740bcfb434c89abe57bb2bc80290cd5495e87ebf8cd0dadb076bc50453590104"],'
                            b'"nonce":"a26d92800cf58e88a5ecf37156c031a4147c2128beeaf1cca2785c93242a4c8b",'
                            b'"previd":"0024839ec9632d382486ba7aac7e0bda3b4bda1d4bd79be9ae78e7e1e813ddd8",'
-                           b'"created":"1622825642",'
+                           b'"created":1622825642,'
                            b'"T":"003a000000000000000000000000000000000000000000000000000000000000"}}\n')
 
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(client2.readline(), 0.5)
         await client.close()
+        await client2.close()
+
+
+class Task3TestCase(KermaTestCase):
+    # 1. On receiving an object message from Grader 1 containing any invalid block, Grader 1 must receive an error
+    #    message and the transaction must not be gossiped to Grader 2.
+    async def test_sendBlockIncorrectTarget_shouldReceiveErrorMessage(self):
+        # The block has an incorrect target.
+        block = {
+            "T": "0000000000000000000000000000000000000000000000000000000000000000", "created": 1624229079,
+            "miner": "TUWien-Kerma",
+            "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+            "note": "First block. Yayy, I have 50 ker now!!",
+            "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+            "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
+        }
+        with self.assertRaises(ProtocolError) as cm:
+            await self._node.handle_block(block)
+
+        the_exception = cm.exception
+        self.assertIn("invalid target", str(the_exception))
+
+    async def test_sendBlockProofOfWorkInvalid_shouldReceiveErrorMessage(self):
+        # The block has an invalid proof-of-work.
+        block = {
+            "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
+            "miner": "TUWien-Kerma",
+            "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+            "note": "First block. Yayy, I have 50 ker now!!",
+            "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+            "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
+        }
+        with self.assertRaises(ProtocolError) as cm:
+            await self._node.handle_block(block)
+
+        the_exception = cm.exception
+        self.assertIn("proof-of-work", str(the_exception))
+
+    async def test_sendBlockInvalidTransaction_shouldReceiveErrorMessage(self):
+        # There is an invalid transaction in the block.
+        pass
+
+    async def test_sendBlockInvalidTransactionSpendSameOutput_shouldReceiveErrorMessage(self):
+        # There are two transactions in the block that spend the same output.
+        pass
+
+    async def test_sendBlockInvalidTransactionSpendAnOutput_shouldReceiveErrorMessage(self):
+        # There are two transactions in the block that spend the same output.
+        pass
+
+    async def test_sendBlockInvalidTransactionCoinbaseExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
+        # A transaction attempts to spend an output
+        pass
+
+    async def test_sendBlockTimestampBeforeGenesis_shouldReceiveErrorMessage(self):
+        pass
+
+    # 2. On receiving an object message from Grader 1 containing a valid block, the block must
+    #    be gossiped to Grader 2 by sending an ihaveobject message with the correct blockid.
+    async def test_sendValidBlockGrader1_shouldReceiveIHaveObjectGrader2(self):
+        client1 = await Client.new_established()
+        client2 = await Client.new_established()
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
+                    "miner": "dionyziz", "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
+                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
+                    "previd": None, "txids": [], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+        }
+
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+        self.assertDictEqual(ihaveobject_message, await client2.read_dict())
+
+        await client1.close()
+        await client2.close()
+
+    async def test_sendValidBlockUnknownTxGrader1_shouldFetchTxFromGrader1AndGrader2(self):
+        client1 = await Client.new_established()
+        client2 = await Client.new_established()
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
+                    "miner": "TUWien-Kerma",
+                    "nonce": "000000000000000000000000af298d050e4395d69670b12b7f4100048da50800",
+                    "note": "First block. Yayy, I have 50 ker now!!",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                    "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        getobject_message = {
+            "type": "getobject",
+            "objectid": "1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"
+        }
+
+        self.assertDictEqual(getobject_message, await client1.read_dict())
+        self.assertDictEqual(getobject_message, await client2.read_dict())
+
+        await client1.close()
+        await client2.close()
+
+    async def test_sendInvalidBlockGrader1_shouldNotReceiveIHaveObjectGrader2(self):
+        client1 = await Client.new_established()
+        client2 = await Client.new_established()
+
+        obj = {
+            "object": {
+                "T": "0000000000000000000000000000000000000000000000000000000000000000", "created": 1624229079,
+                "miner": "TUWien-Kerma",
+                "nonce": "200000000000000000000000000000000000000000000000000000000e762cb9",
+                "note": "First block. Yayy, I have 50 ker now!!",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
+            }, "type": "block"
+        }
+
+        with self.assertRaises(asyncio.TimeoutError):
+            await asyncio.wait_for(client2.readline(), 0.5)
+
+        await client1.close()
         await client2.close()
 
 
