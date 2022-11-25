@@ -321,7 +321,7 @@ class Task3TestCase(KermaTestCase):
     # 1. On receiving an object message from Grader 1 containing any invalid block, Grader 1 must receive an error
     #    message and the transaction must not be gossiped to Grader 2.
     async def test_handle_block_incorrectTarget_shouldRaiseProtocolError(self):
-        # The block has an incorrect target.
+        # a. The block has an incorrect target.
         block = {
             "T": "0000000000000000000000000000000000000000000000000000000000000000", "created": 1624229079,
             "miner": "TUWien-Kerma",
@@ -337,7 +337,7 @@ class Task3TestCase(KermaTestCase):
         self.assertIn("invalid target", str(the_exception))
 
     async def test_handle_block_proofOfWorkInvalid_shouldRaiseProtocolError(self):
-        # The block has an invalid proof-of-work.
+        # b. The block has an invalid proof-of-work.
         block = {
             "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
             "miner": "TUWien-Kerma",
@@ -353,7 +353,6 @@ class Task3TestCase(KermaTestCase):
         self.assertIn("proof-of-work", str(the_exception))
 
     async def test_handle_block_timestampFuture_shouldRaiseProtocolError(self):
-        # The block has an invalid proof-of-work.
         block = {
             "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": int(time.time() + 3600),
             "miner": "TUWien-Kerma",
@@ -369,7 +368,7 @@ class Task3TestCase(KermaTestCase):
         self.assertIn("future", str(the_exception))
 
     async def test_sendBlockInvalidTransaction_shouldReceiveErrorMessage(self):
-        # There is an invalid transaction in the block.
+        # c. There is an invalid transaction in the block.
         client1 = await Client.new_established()
 
         self._node.ignore_pow = True
@@ -415,13 +414,18 @@ class Task3TestCase(KermaTestCase):
 
         await client1.close()
 
-    async def test_sendBlockInvalidTransactionSpendAnOutput_shouldReceiveErrorMessage(self):
-        # There are two transactions in the block that spend the same output.
+    async def test_sendBlockTwoTransactionSpendTheSameOutput_shouldReceiveErrorMessage(self):
+        # d. There are two transactions in the block that spend the same output.
+        pass
+        # TODO
+
+    async def test_sendBlockTransactionAttemptsToSpendAnOutput_shouldReceiveErrorMessage(self):
+        # e. A transaction attempts to spend an output
         pass
         # TODO
 
     async def test_sendBlockCoinbaseTransactionExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
-        # The coinbase transaction has an output that exceeds the block rewards and the fees.
+        # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
         pass
         # TODO
 
