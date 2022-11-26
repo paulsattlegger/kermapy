@@ -68,7 +68,6 @@ class KermaTestCase(IsolatedAsyncioTestCase):
 
     def tearDown(self):
         shutil.rmtree(self._tmp_directory)
-        self._node.ignore_pow = False
 
     async def asyncTearDown(self):
         await self._node.shutdown()
@@ -528,8 +527,62 @@ class Task3TestCase(KermaTestCase):
         await client1.close()
 
     async def test_sendBlockCoinbaseTransactionSpentInAnotherTransactionSameBlock_shouldReceiveErrorMessage(self):
-        pass
-        # TODO
+        client1 = await Client.new_established()
+
+        cbtx_message = {
+            "object": {
+                "height": 1, "outputs": [
+                    {
+                        "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
+                        "value": 50000000000000
+                    }],
+                "type": "transaction"
+            }, "type": "object"
+        }
+        await client1.write_dict(cbtx_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+
+        tx_message = {
+            "object": {
+                "inputs": [{
+                    "outpoint": {
+                        "index": 0,
+                        "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                    },
+                    "sig": "49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b"
+                }], "outputs": [
+                    {"pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3", "value": 50}],
+                "type": "transaction"
+            }, "type": "object"
+        }
+        await client1.write_dict(tx_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+
+        cbtx_spend_in_same_block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624220079,
+                    "miner": "Snekel testminer",
+                    "nonce": "000000000000000000000000000000000000000000000000000000001beecbf3",
+                    "note": "First block after genesis with CBTX and TX spending it",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                    "txids": ["2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df",
+                              "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"], "type": "block"
+                }, "type": "object"
+        }
+
+        await client1.write_dict(cbtx_spend_in_same_block_message)
+        self.assertIn("error", await client1.read_dict())
+
+        await client1.close()
 
     # 2. On receiving an object message from Grader 1 containing a valid block, the block must
     #    be gossiped to Grader 2 by sending an ihaveobject message with the correct blockid.

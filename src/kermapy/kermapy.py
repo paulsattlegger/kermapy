@@ -250,16 +250,24 @@ class Node:
         # TODO For each transaction in the block, check that the transaction is valid, and update your
         #  UTXO set based on the transaction
         txs = [self._objs.get(txid) for txid in block["txids"]]
+        not_coinbase_txs = [tx for tx in txs if "inputs" in tx]
         coinbase_txs = [tx for tx in txs if "inputs" not in tx]
-        # check for coinbase transactions, there can be at most one coinbase transaction in a block
+        # Check for coinbase transactions, there can be at most one coinbase transaction in a block
         if len(coinbase_txs) > 1:
             raise ProtocolError("Received block contains more than one coinbase transaction")
         if len(coinbase_txs) == 1:
             if block["txids"][0] != objects.Objects.id(coinbase_txs[0]):
                 raise ProtocolError("Received block with coinbase transaction not at index 0")
-        # TODO The coinbase transaction cannot be spent in another transaction in the same block (this is in order to
-        #  make the law of conservation for the coinbase transaction easier to verify).
+            # Check the coinbase transaction cannot be spent in another transaction in the same block (this is in order
+            # to make the law of conservation for the coinbase transaction easier to verify).
+            for tx in not_coinbase_txs:
+                for inpt in tx["inputs"]:
+                    txid = inpt["outpoint"]["txid"]
+                    if txid == objects.Objects.id(coinbase_txs[0]):
+                        raise ProtocolError("Received block with coinbase transaction spend in another transaction")
         # TODO Validate the coinbase transaction if there is one.
+        # TODO The height in the coinbase transaction must match the height of the block the transaction is contained
+        #  in.
 
 
 async def main():
