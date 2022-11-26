@@ -25,6 +25,9 @@ class UtxoDb:
         return json.loads(value)
 
     def put(self, block_id: str, utxo: dict) -> None:
+        for event in self._events[block_id]:
+            event.set()
+        del self._events[block_id]
         self._db.put(bytes.fromhex(block_id), utxo)
 
     async def create_item_async(self, block: dict, objs: objects.Objects, broadcast: Callable[[dict], None]) -> dict:
@@ -39,6 +42,8 @@ class UtxoDb:
                 except asyncio.TimeoutError:
                     raise UtxoError(
                         "Failed to get previous block in time for UTXO sets")
+                finally:
+                    del self._events[prev_block_id]
             try:
                 utxo_set = self.get(prev_block_id)
             except KeyError:
