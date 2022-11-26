@@ -430,12 +430,102 @@ class Task3TestCase(KermaTestCase):
         # TODO
 
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
-        pass
-        # TODO
+        client1 = await Client.new_established()
+
+        self._node.ignore_pow = True
+
+        tx_cb_message = {
+            "object": {
+                "height": 1, "outputs": [{
+                    "pubkey": "62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c",
+                    "value": 50000000000000
+                }], "type": "transaction"
+            }, "type": "object"
+        }
+        await client1.write_dict(tx_cb_message)
+
+        tx_message = {
+            "object": {
+                "inputs": [{
+                    "outpoint": {
+                        "index": 0,
+                        "txid": "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"
+                    },
+                    "sig": "d51e82d5c121c5db21c83404aaa3f591f2099bccf731208c4b0b676308be1f994882f9d991c0ebfd8fdecc90a4aec6165fc3440ade9c83b043cba95b2bba1d0a"
+                }], "outputs": [{
+                    "pubkey": "228ee807767047682e9a556ad1ed78dff8d7edf4bc2a5f4fa02e4634cfcad7e0",
+                    "value": 49000000000000
+                }], "type": "transaction"
+            }, "type": "object"
+        }
+        await client1.write_dict(tx_message)
+
+        # skip ihaveobject
+        await client1.readline()
+        await client1.readline()
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
+                    "miner": "Kermapy", "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                    "txids": ["d33ac384ea704025a6cac53f669c8e924eff7205b0cd0d6a231f0881b6265a8e",
+                              "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"], "type": "block"
+                },
+            "type": "object"
+        }
+        await client1.write_dict(block_message)
+
+        self.assertIn("error", await client1.read_dict())
+
+        await client1.close()
 
     async def test_sendBlockTwoCoinbaseTransactions_shouldReceiveErrorMessage(self):
-        pass
-        # TODO
+        client1 = await Client.new_established()
+
+        self._node.ignore_pow = True
+
+        tx_cb_1_message = {
+            "object": {
+                "height": 1, "outputs": [{
+                    "pubkey": "62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c",
+                    "value": 50000000000000
+                }], "type": "transaction"
+            }, "type": "object"
+        }
+        await client1.write_dict(tx_cb_1_message)
+
+        tx_cb_2_message = {
+            "object": {
+                "height": 0,
+                "outputs": [
+                    {"pubkey": "57558a6dae91ac3ab8caf3f543eac9c51cba4ac680ba5ba0d81b5575dc06bc46", "value": 50}],
+                "type": "transaction"
+            }, "type": "object"
+        }
+        await client1.write_dict(tx_cb_2_message)
+
+        # skip ihaveobject
+        await client1.readline()
+        await client1.readline()
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
+                    "miner": "Kermapy", "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                    "txids": ["2fb7adb654b373e85c6b5c596cc110dcb6643ee138768f4aa947e9ddb7d91f8d",
+                              "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"], "type": "block"
+                },
+            "type": "object"
+        }
+        await client1.write_dict(block_message)
+
+        self.assertIn("error", await client1.read_dict())
+
+        await client1.close()
 
     async def test_sendBlockCoinbaseTransactionSpentInAnotherTransactionSameBlock_shouldReceiveErrorMessage(self):
         pass

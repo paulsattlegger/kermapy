@@ -250,7 +250,7 @@ class Node:
         # TODO For each transaction in the block, check that the transaction is valid, and update your
         #  UTXO set based on the transaction
         txs = [self._objs.get(txid) for txid in block["txids"]]
-        coinbase_txs = [tx for tx in txs if len(tx["inputs"]) == 0]
+        coinbase_txs = [tx for tx in txs if "inputs" not in tx]
         # check for coinbase transactions, there can be at most one coinbase transaction in a block
         if len(coinbase_txs) > 1:
             raise ProtocolError("Received block contains more than one coinbase transaction")
