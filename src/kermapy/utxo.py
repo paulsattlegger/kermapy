@@ -6,6 +6,8 @@ from typing import Callable
 import objects
 import plyvel
 
+from org.webpki.json.Canonicalize import canonicalize
+
 
 class UtxoError(Exception):
     pass
@@ -28,7 +30,7 @@ class UtxoDb:
         for event in self._events[block_id]:
             event.set()
         del self._events[block_id]
-        self._db.put(bytes.fromhex(block_id), utxo)
+        self._db.put(bytes.fromhex(block_id), canonicalize(utxo))
 
     async def create_item_async(self, block: dict, objs: objects.Objects, broadcast: Callable[[dict], None]) -> dict:
         prev_block_id = block["previd"]
@@ -40,10 +42,10 @@ class UtxoDb:
                 try:
                     await self._request_block_async(prev_block_id, 5, broadcast)
                 except asyncio.TimeoutError:
+                    del self._events[prev_block_id]
                     raise UtxoError(
                         "Failed to get previous block in time for UTXO sets")
-                finally:
-                    del self._events[prev_block_id]
+
             try:
                 utxo_set = self.get(prev_block_id)
             except KeyError:
@@ -63,34 +65,35 @@ class UtxoDb:
         return utxo_set
 
     def _adjust_set_for_transaction(self, utxo_set: dict, tx: dict, objs: objects.Objects) -> None:
-        for input in tx["inputs"]:
-            outpoint = input["outpoint"]
-            input_tx_id = outpoint["txid"]
-            input_tx_index = outpoint["index"]
+        if "inputs" in tx:
+            for input in tx["inputs"]:
+                outpoint = input["outpoint"]
+                input_tx_id = outpoint["txid"]
+                input_tx_index = outpoint["index"]
 
-            prev_tx: dict
+                prev_tx: dict
 
-            # Get transaction where the funds come from
-            try:
-                prev_tx = objs.get(input_tx_id)
-            except KeyError:
-                raise UtxoError(
-                    f"Could not find input transaction '{input_tx_id}' in object database")
+                # Get transaction where the funds come from
+                try:
+                    prev_tx = objs.get(input_tx_id)
+                except KeyError:
+                    raise UtxoError(
+                        f"Could not find input transaction '{input_tx_id}' in object database")
 
-            pubKey = prev_tx["output"][input_tx_index]["pubkey"]
+                pubKey = prev_tx["output"][input_tx_index]["pubkey"]
 
-            utxo_key = pubKey + "_" + input_tx_index
+                utxo_key = pubKey + "_" + input_tx_index
 
-            # Check if output is till in UTXO, otherwise it has been spent already
-            if utxo_key not in utxo_set:
-                raise UtxoError(
-                    f"Could not find UXTO entry for key '{utxo_key}'")
+                # Check if output is till in UTXO, otherwise it has been spent already
+                if utxo_key not in utxo_set:
+                    raise UtxoError(
+                        f"Could not find UXTO entry for key '{utxo_key}'")
 
-            del utxo_set[utxo_key]
+                del utxo_set[utxo_key]
 
         # Add outputs of current transaction
         for idx, output in enumerate(tx["outputs"]):
-            utxo_key = output["pubkey"] + "_" + idx
+            utxo_key = output["pubkey"] + "_" + str(idx)
             utxo_set[utxo_key] = output["value"]
 
     async def _request_block_async(self, block_id: str, timeout: float, broadcast: Callable[[dict], None]):
