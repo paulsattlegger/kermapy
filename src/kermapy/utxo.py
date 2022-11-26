@@ -14,7 +14,7 @@ class UtxoError(Exception):
 class UtxoDb:
 
     def __init__(self, storage_path: str):
-        adjusted_path = pathlib.Path(storage_path, "utxos")
+        adjusted_path = str(pathlib.Path(storage_path, "utxos"))
         self._db: plyvel.DB = plyvel.DB(adjusted_path, create_if_missing=True)
         self._events: dict[str, set[asyncio.Event]] = defaultdict(set)
 

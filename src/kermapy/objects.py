@@ -11,7 +11,7 @@ from org.webpki.json.Canonicalize import canonicalize
 
 class Objects:
     def __init__(self, storage_path: str):
-        adjusted_path = pathlib.Path(storage_path, "objects")
+        adjusted_path = str(pathlib.Path(storage_path, "objects"))
         self._db: plyvel.DB = plyvel.DB(adjusted_path, create_if_missing=True)
         self._events: dict[str, set[asyncio.Event]] = defaultdict(set)
 
