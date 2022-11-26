@@ -42,12 +42,19 @@ class Client:
     async def read_dict(self) -> dict:
         return json.loads(await self._reader.readline())
 
-    async def write(self, message: bytes):
+    async def write(self, message: bytes) -> None:
         self._writer.write(message)
         await self._writer.drain()
 
-    async def write_dict(self, message: dict):
+    async def write_dict(self, message: dict) -> None:
         await self.write(canonicalize(message) + b"\n")
+
+    async def write_tx(self, tx: dict) -> dict:
+        await self.write_dict({
+            "object": tx,
+            "type": "object"
+        })
+        return await self.read_dict()
 
     async def close(self) -> None:
         self._writer.close()
@@ -413,15 +420,195 @@ class Task3TestCase(KermaTestCase):
 
         await client1.close()
 
+    async def append_block0(self, client):
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
+                    "miner": "dionyziz", "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
+                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
+                    "previd": None, "txids": [], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client.write_dict(block_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+        }
+        self.assertDictEqual(ihaveobject_message, await client.read_dict())
+
+    async def append_block1(self, client):
+        tx_block1_after_genesis = {
+            "height": 1, "outputs": [
+                {
+                    "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+        }
+        self.assertDictEqual(ihaveobject_message, await client.write_tx(tx_block1_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624220079,
+                "miner": "Snekel testminer",
+                "nonce": "000000000000000000000000000000000000000000000000000000009d8b60ea",
+                "note": "First block after genesis with CBTX",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": ["2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"], "type": "block"
+            }, "type": "object"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e"
+        }
+        await client.write_dict(block_message)
+        self.assertDictEqual(ihaveobject_message, await client.read_dict())
+
+    async def append_block2(self, client):
+        tx_block2_after_genesis = {
+            "height": 2, "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+        }
+        self.assertDictEqual(ihaveobject_message, await client.write_tx(tx_block2_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624221079,
+                "miner": "Snekel testminer",
+                "nonce": "000000000000000000000000000000000000000000000000000000004d82fc68",
+                "note": "Second block after genesis with CBTX",
+                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                "txids": ["73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"], "type": "block"
+            }, "type": "object"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "00000002a8986627f379547ed1ec990841e1f1c6ba616a56bfcd4b410280dc6d"
+        }
+        await client.write_dict(block_message)
+        self.assertDictEqual(ihaveobject_message, await client.read_dict())
+
     async def test_sendBlockTwoTransactionSpendTheSameOutput_shouldReceiveErrorMessage(self):
         # d. There are two transactions in the block that spend the same output.
-        pass
-        # TODO
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+        await self.append_block1(client1)
+        await self.append_block2(client1)
+
+        tx_1 = {
+            "inputs": [{
+                "outpoint": {
+                    "index": 0, "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                },
+                "sig": "334939cac007a71e72484ffa5f34fabe3e3aff31297003a7d3d24795ed33d04a72f8b14316bce3e6467b2f6e66d481f8142ccd9933279fdcb3aef7ace145f10b"
+            }, {
+                "outpoint": {
+                    "index": 0, "txid": "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+                },
+                "sig": "032c6c0a1074b7a965e58fa5071aa9e518bf5c4db9e2880ca5bb5c55dcea47cfd6e0a9859526a16d2bb0b46da0ca4c6f90be8ddf16b149be66016d7f272e6708"
+            }],
+            "outputs": [
+                {"pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60", "value": 20}],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "objectid": "fbb455506e5a7ce628fed88c8429e43810d3e306c4ff0c5a8313a1aeed6da88d",
+            "type": "ihaveobject"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_1))
+
+        tx_2 = {
+            "inputs": [{
+                "outpoint": {
+                    "index": 0,
+                    "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                },
+                "sig": "49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b"
+            }], "outputs": [
+                {"pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3", "value": 50}],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "objectid": "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799",
+            "type": "ihaveobject"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_2))
+
+        double_spend_2_block = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624222079,
+                "miner": "Snekel testminer",
+                "nonce": "00000000000000000000000000000000000000000000000000000000062d431b",
+                "note": "Third block after genesis with double-spending TX",
+                "previd": "00000002a8986627f379547ed1ec990841e1f1c6ba616a56bfcd4b410280dc6d",
+                "txids": ["fbb455506e5a7ce628fed88c8429e43810d3e306c4ff0c5a8313a1aeed6da88d",
+                          "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"], "type": "block"
+            }, "type": "object"
+        }
+
+        await client1.write_dict(double_spend_2_block)
+
+        self.assertIn("error", await client1.read_dict())
 
     async def test_sendBlockTransactionAttemptsToSpendAnOutput_shouldReceiveErrorMessage(self):
         # e. A transaction attempts to spend an output
-        pass
-        # TODO
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+        await self.append_block1(client1)
+        await self.append_block2(client1)
+
+        tx = {
+            "inputs": [{
+                "outpoint": {
+                    "index": 0, "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                },
+                "sig": "334939cac007a71e72484ffa5f34fabe3e3aff31297003a7d3d24795ed33d04a72f8b14316bce3e6467b2f6e66d481f8142ccd9933279fdcb3aef7ace145f10b"
+            }, {
+                "outpoint": {
+                    "index": 0, "txid": "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+                },
+                "sig": "032c6c0a1074b7a965e58fa5071aa9e518bf5c4db9e2880ca5bb5c55dcea47cfd6e0a9859526a16d2bb0b46da0ca4c6f90be8ddf16b149be66016d7f272e6708"
+            }],
+            "outputs": [{"pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60", "value": 20}],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "fbb455506e5a7ce628fed88c8429e43810d3e306c4ff0c5a8313a1aeed6da88d"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx))
+
+        double_spend_1_block = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624222079,
+                "miner": "Snekel testminer",
+                "nonce": "0000000000000000000000000000000000000000000000000000000010fea5cc",
+                "note": "Third block after genesis with double-spending TX",
+                "previd": "000000021dc4cfdcd0970084949f94da17f97504e1cc3e354851bb4768842b57",
+                "txids": ["fbb455506e5a7ce628fed88c8429e43810d3e306c4ff0c5a8313a1aeed6da88d"], "type": "block"
+            }, "type": "object"
+        }
+
+        await client1.write_dict(double_spend_1_block)
+
+        self.assertIn("error", await client1.read_dict())
 
     async def test_sendBlockCoinbaseTransactionExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
