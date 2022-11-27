@@ -8,7 +8,8 @@ import time
 import unittest
 from unittest import IsolatedAsyncioTestCase
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/kermapy')))
+sys.path.insert(0, os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../src/kermapy')))
 
 from kermapy import Node, ProtocolError  # noqa
 from org.webpki.json.Canonicalize import canonicalize  # noqa
@@ -227,7 +228,8 @@ class Task2TestCase(KermaTestCase):
         await client.write(
             b'{"type":"getobject","objectid":"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"}\n')
         response = await client.readline()
-        self.assertIn(b'"62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c"', response)
+        self.assertIn(
+            b'"62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c"', response)
         self.assertIn(b'"type":"object"', response)
         await client.close()
 
@@ -249,7 +251,8 @@ class Task2TestCase(KermaTestCase):
         await client.write(
             b'{"type":"getobject","objectid":"d33ac384ea704025a6cac53f669c8e924eff7205b0cd0d6a231f0881b6265a8e  "}\n')
         response = await client.readline()
-        self.assertIn(b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
+        self.assertIn(
+            b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
         self.assertIn(b'"type":"object"', response)
         await client.close()
 
@@ -272,7 +275,8 @@ class Task2TestCase(KermaTestCase):
         await client2.write(
             b'{"type":"getobject","objectid":"d33ac384ea704025a6cac53f669c8e924eff7205b0cd0d6a231f0881b6265a8e"}\n')
         response = await client2.readline()
-        self.assertIn(b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
+        self.assertIn(
+            b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
         self.assertIn(b'"type":"object"', response)
         await client.close()
         await client2.close()
@@ -288,7 +292,8 @@ class Task2TestCase(KermaTestCase):
                            b'"value":50000000000000}],"type":"transaction"}}\n')
 
         response = await client2.readline()
-        self.assertIn(b'"objectid":"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
+        self.assertIn(
+            b'"objectid":"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
         self.assertIn(b'"type":"ihaveobject"', response)
         await client.close()
         await client2.close()
@@ -300,7 +305,8 @@ class Task2TestCase(KermaTestCase):
         await client.write(
             b'{"type":"ihaveobject","objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"}\n')
         response = await client.readline()
-        self.assertIn(b'"objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"', response)
+        self.assertIn(
+            b'"objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"', response)
         self.assertIn(b'"type":"getobject"', response)
         await client.close()
 
@@ -618,6 +624,8 @@ class Task3TestCase(KermaTestCase):
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
+        await self.append_block0(client1)
+
         self._node.ignore_pow = True
 
         tx_cb_message = {
@@ -670,6 +678,8 @@ class Task3TestCase(KermaTestCase):
     async def test_sendBlockTwoCoinbaseTransactions_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
+        await self.append_block0(client1)
+
         self._node.ignore_pow = True
 
         tx_cb_1_message = {
@@ -715,6 +725,8 @@ class Task3TestCase(KermaTestCase):
 
     async def test_sendBlockCoinbaseTransactionSpentInAnotherTransactionSameBlock_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
+
+        await self.append_block0(client1)
 
         cbtx_message = {
             "object": {
