@@ -722,6 +722,141 @@ class Task3TestCase(KermaTestCase):
 
         self.assertIn("error", await client1.read_dict())
 
+    async def test_sendBlockCoinbaseTransactionNotExceedsBlockRewardsAndFees_shouldReceiveIHaveObjectMessage(self):
+        # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+        await self.append_block1(client1)
+
+        cb_block2_after_genesis = {
+            "height": 2, "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 99999999999950
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "80f961fd526ac8aa7d5f2dfe51c72235b7643fe58f6f651cb35aaedf1bb3d5db"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(cb_block2_after_genesis))
+
+        tx_block2_after_genesis = {
+            "inputs": [
+                {
+                    "outpoint": {
+                        "index": 0,
+                        "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                    },
+                    "sig": "49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b"
+                }
+            ],
+            "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50
+                }
+            ],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_block2_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1669664108,
+                "miner": "Kermars",
+                "nonce": "000000000000000000000000000000000000000000000000600000001bd27c57",
+                "note": "Second block after genesis with CBTX and TX",
+                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                "txids": [
+                    "80f961fd526ac8aa7d5f2dfe51c72235b7643fe58f6f651cb35aaedf1bb3d5db",
+                    "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+                ],
+                "type": "block"
+            },
+            "type": "object"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "000000028a9ddb2bdb02cc6d0c155596ee3cfcf5ff948475dda871dc94755689"
+        }
+        await client1.write_dict(block_message)
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+
+    async def test_sendBlockCoinbaseTransactionExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
+        # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+        await self.append_block1(client1)
+
+        cb_block2_after_genesis = {
+            "height": 2, "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 99999999999951
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "afcdaa10d98d1e03672b4160d329090cfed59baba22e3008f4b5dabf0fcdfbeb"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(cb_block2_after_genesis))
+
+        tx_block2_after_genesis = {
+            "inputs": [
+                {
+                    "outpoint": {
+                        "index": 0,
+                        "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                    },
+                    "sig": "49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b"
+                }
+            ],
+            "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50
+                }
+            ],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_block2_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1669664684,
+                "miner": "Kermars",
+                "nonce": "000000000000000000000000000000000000000000000000600000000e9aa668",
+                "note": "Second block after genesis with CBTX and TX",
+                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                "txids": [
+                    "afcdaa10d98d1e03672b4160d329090cfed59baba22e3008f4b5dabf0fcdfbeb",
+                    "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+                ],
+                "type": "block"
+            },
+            "type": "object"
+        }
+        await client1.write_dict(block_message)
+        response = await client1.read_dict()
+        self.assertIn("error", response)
+        self.assertIn("exceed", response["error"])
+        self.assertIn("fees", response["error"])
+
     async def test_sendBlockCoinbaseTransactionHeightNotMatchingBlockHeight_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
