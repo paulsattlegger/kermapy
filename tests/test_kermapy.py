@@ -656,7 +656,6 @@ class Task3TestCase(KermaTestCase):
 
         self.assertIn("error", await client1.read_dict())
 
-    @unittest.skip("TODO implement")
     async def test_sendBlockCoinbaseTransactionHeightNotMatchingBlockHeight_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
