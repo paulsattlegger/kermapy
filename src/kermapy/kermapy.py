@@ -215,9 +215,9 @@ class Node:
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")
 
-    def validate_transaction(self, transaction: dict) -> None:
+    def validate_transaction(self, transaction: dict) -> transaction_validation.TransactionMetadata:
         try:
-            transaction_validation.validate_transaction(
+            return transaction_validation.validate_transaction(
                 transaction, self._objs)
         except transaction_validation.InvalidTransaction as e:
             logging.warning("Found invalid tx")
@@ -257,9 +257,15 @@ class Node:
         #  UTXO set based on the transaction
         txs = [self._objs.get(txid) for txid in block["txids"]]
 
-        # Validate all transactions
+        fees = 0
+
+        # Validate all transactions and calculate fees
         for tx in txs:
-            self.validate_transaction(tx)
+            metadata = self.validate_transaction(tx)
+
+            # is none when coinbase tx
+            if metadata is not None:
+                fees += metadata.total_input_value - metadata.total_output_value
 
         utxo_set: dict
 
@@ -295,7 +301,6 @@ class Node:
                 raise ProtocolError("Received block with coinbase transaction height does not match block height")
             # Check the coinbase transaction has no outputs that exceeds the block rewards and the fees.
             block_rewards = 50 * (10 ** 12)
-            fees = 0  # TODO
             outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
             if outputs > block_rewards + fees:
                 raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
