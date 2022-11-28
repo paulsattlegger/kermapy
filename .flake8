@@ -1,0 +1,6 @@
+[flake8]
+exclude =
+    src/kermapy/org
+    venv
+ignore =
+    E501
