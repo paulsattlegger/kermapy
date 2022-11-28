@@ -14,7 +14,7 @@ class UtxoError(Exception):
     pass
 
 
-def _adjust_set_for_transaction(utxo_set: dict, tx: dict, objs: objects.Objects) -> None:
+def _adjust_set_for_transaction(utxo_set: dict, tx_id: str, tx: dict, objs: objects.Objects) -> None:
     if "inputs" in tx:
         for inpt in tx["inputs"]:
             outpoint = inpt["outpoint"]
@@ -32,7 +32,7 @@ def _adjust_set_for_transaction(utxo_set: dict, tx: dict, objs: objects.Objects)
 
             pub_key = prev_tx["outputs"][input_tx_index]["pubkey"]
 
-            utxo_key = pub_key + "_" + str(input_tx_index)
+            utxo_key = input_tx_id + "_" + pub_key + "_" + str(input_tx_index)
 
             # Check if output is till in UTXO, otherwise it has been spent already
             if utxo_key not in utxo_set:
@@ -43,7 +43,7 @@ def _adjust_set_for_transaction(utxo_set: dict, tx: dict, objs: objects.Objects)
 
     # Add outputs of current transaction
     for idx, output in enumerate(tx["outputs"]):
-        utxo_key = output["pubkey"] + "_" + str(idx)
+        utxo_key = tx_id + "_" + output["pubkey"] + "_" + str(idx)
         utxo_set[utxo_key] = output["value"]
 
 
@@ -91,7 +91,7 @@ class UtxoDb:
         for tx_id in tx_ids:
             try:
                 stored_tx = objs.get(tx_id)
-                _adjust_set_for_transaction(utxo_set, stored_tx, objs)
+                _adjust_set_for_transaction(utxo_set, tx_id, stored_tx, objs)
             except KeyError as e:
                 raise UtxoError(
                     f"Could not find transaction '{tx_id}' in object database")
