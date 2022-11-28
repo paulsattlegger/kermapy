@@ -97,7 +97,7 @@ HEXIFIED_VALUE_32 = {
 PRINTABLE_ASCII_UP_TO_128 = {
     "type": "string",
     "pattern": "^[ -~]*$",
-    "maxlength": 128
+    "maxLength": 128
 }
 TRANSACTION = {
     "type": "object",
