@@ -225,13 +225,18 @@ class Node:
             logging.warning("Found invalid tx")
             raise ProtocolError(str(e))
 
-    async def resolve_shallow(self, object_id: str, timeout: float):
+    async def resolve_object(self, object_id: str):
         event = self._objs.event_for(object_id)
         self.broadcast({
             "type": "getobject",
             "objectid": object_id
         })
-        await asyncio.wait_for(event.wait(), timeout)
+        await asyncio.wait_for(event.wait(), self._timeout)
+
+    async def get_objects(self, object_ids: list[str]) -> list[dict]:
+        unknown_objs = [obj_id for obj_id in object_ids if obj_id not in self._objs]
+        await asyncio.gather(*[self.resolve_object(obj_id) for obj_id in unknown_objs])
+        return [self._objs.get(obj_id) for obj_id in object_ids]
 
     async def validate_block(self, block: dict) -> None:
         # Check that the block contains all required fields and that they are of the format
@@ -249,19 +254,14 @@ class Node:
         # Check that for all the txids in the block, you have the corresponding transaction in your
         # local object database. If not, then send a "getobject" message to your peers in order
         # to get the transaction.
-        unknown_txids = [txid for txid in block["txids"]
-                         if txid not in self._objs]
         try:
-            await asyncio.gather(*[self.resolve_shallow(txid, self._timeout) for txid in unknown_txids])
+            txs = await self.get_objects(block["txids"])
         except asyncio.TimeoutError:
             raise ProtocolError("Received block contains transactions that could not be received")
         # For each transaction in the block, check that the transaction is valid, and update UTXO set based on the
         # transaction
-        txs = [self._objs.get(txid) for txid in block["txids"]]
         not_coinbase_txs = [tx for tx in txs if "inputs" in tx]
-        coinbase_txs = [tx for tx in txs if "inputs" not in tx]
         fees = 0
-        # Validate all transactions and calculate fees
         for tx in not_coinbase_txs:
             metadata = self.validate_transaction(tx)
             fees += metadata.total_input_value - metadata.total_output_value
@@ -273,6 +273,7 @@ class Node:
             raise ProtocolError(
                 str(e))
         # Check for coinbase transactions, there can be at most one coinbase transaction in a block
+        coinbase_txs = [tx for tx in txs if "inputs" not in tx]
         if len(coinbase_txs) > 1:
             raise ProtocolError(
                 "Received block contains more than one coinbase transaction")
