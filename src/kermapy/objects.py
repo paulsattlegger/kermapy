@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 from collections import defaultdict
+import pathlib
 
 import plyvel
 
@@ -10,7 +11,8 @@ from org.webpki.json.Canonicalize import canonicalize
 
 class Objects:
     def __init__(self, storage_path: str):
-        self._db: plyvel.DB = plyvel.DB(storage_path, create_if_missing=True)
+        adjusted_path = str(pathlib.Path(storage_path, "objects"))
+        self._db: plyvel.DB = plyvel.DB(adjusted_path, create_if_missing=True)
         self._events: dict[str, set[asyncio.Event]] = defaultdict(set)
 
     def close(self):

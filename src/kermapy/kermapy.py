@@ -12,6 +12,7 @@ import objects
 import peers
 import schemas
 import transaction_validation
+import utxo
 from org.webpki.json.Canonicalize import canonicalize
 
 
@@ -60,6 +61,7 @@ class Node:
             config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
+        self._utxos: utxo.UtxoDb = utxo.UtxoDb(storage_path)
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -176,7 +178,7 @@ class Node:
                 object_id = objects.Objects.id(obj)
                 if object_id not in self._objs:
                     if obj["type"] == "transaction":
-                        self.handle_transaction(obj)
+                        self.validate_transaction(obj)
                     elif obj["type"] == "block":
                         await self.handle_block(obj)
                     self._objs.put(obj)
@@ -207,16 +209,18 @@ class Node:
                         "object": self._objs.get(object_id)
                     }
                 else:
-                    logging.info(f"Object with object ID: {object_id} is not in the database")
+                    logging.info(
+                        f"Object with object ID: {object_id} is not in the database")
             case "hello":
                 raise ProtocolError(
                     "Received a second 'hello' message, even though handshake is completed")
 
-    def handle_transaction(self, transaction: dict) -> None:
+    def validate_transaction(self, transaction: dict) -> None:
         try:
-            transaction_validation.validate_transaction(transaction, self._objs)
+            transaction_validation.validate_transaction(
+                transaction, self._objs)
         except transaction_validation.InvalidTransaction as e:
-            logging.warning("Received invalid tx")
+            logging.warning("Found invalid tx")
             raise ProtocolError(str(e))
 
     async def resolve_shallow(self, object_id: str, timeout: float):
@@ -236,12 +240,15 @@ class Node:
         if block['created'] > time.time():
             raise ProtocolError("Received block with timestamp in the future")
         # Check the proof-of-work
-        if int(objects.Objects.id(block), base=16) >= int(block['T'], base=16):
-            raise ProtocolError("Received block does not satisfy the proof-of-work equation")
+        block_id = objects.Objects.id(block)
+        if int(block_id, base=16) >= int(block['T'], base=16):
+            raise ProtocolError(
+                "Received block does not satisfy the proof-of-work equation")
         # Check that for all the txids in the block, you have the corresponding transaction in your
         # local object database. If not, then send a "getobject" message to your peers in order
         # to get the transaction.
-        unknown_txids = [txid for txid in block["txids"] if txid not in self._objs]
+        unknown_txids = [txid for txid in block["txids"]
+                         if txid not in self._objs]
         try:
             await asyncio.gather(*[self.resolve_shallow(txid, 5) for txid in unknown_txids])
         except asyncio.TimeoutError:
@@ -249,15 +256,32 @@ class Node:
         # TODO For each transaction in the block, check that the transaction is valid, and update your
         #  UTXO set based on the transaction
         txs = [self._objs.get(txid) for txid in block["txids"]]
+
+        # Validate all transactions
+        for tx in txs:
+            self.validate_transaction(tx)
+
+        utxo_set: dict
+
+        # Create new utxo set and check for problems while creation
+        try:
+            utxo_set = await self._utxos.create_item_async(block, self._objs, self.broadcast)
+        except utxo.UtxoError as e:
+            logging.warning("UTXO check was not successful")
+            raise ProtocolError(
+                str(e))
+
         not_coinbase_txs = [tx for tx in txs if "inputs" in tx]
         coinbase_txs = [tx for tx in txs if "inputs" not in tx]
         # Check for coinbase transactions, there can be at most one coinbase transaction in a block
         if len(coinbase_txs) > 1:
-            raise ProtocolError("Received block contains more than one coinbase transaction")
+            raise ProtocolError(
+                "Received block contains more than one coinbase transaction")
         if len(coinbase_txs) == 1:
             coinbase_txid = objects.Objects.id(coinbase_txs[0])
             if block["txids"][0] != coinbase_txid:
-                raise ProtocolError("Received block with coinbase transaction not at index 0")
+                raise ProtocolError(
+                    "Received block with coinbase transaction not at index 0")
             # Check the coinbase transaction cannot be spent in another transaction in the same block (this is in order
             # to make the law of conservation for the coinbase transaction easier to verify).
             for tx in not_coinbase_txs:
@@ -275,6 +299,8 @@ class Node:
             outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
             if outputs > block_rewards + fees:
                 raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
+
+        self._utxos.put(block_id, utxo_set)
 
 
 async def main():

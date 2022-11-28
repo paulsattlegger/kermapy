@@ -8,7 +8,8 @@ import time
 import unittest
 from unittest import IsolatedAsyncioTestCase
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/kermapy')))
+sys.path.insert(0, os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../src/kermapy')))
 
 from kermapy import Node, ProtocolError  # noqa
 from org.webpki.json.Canonicalize import canonicalize  # noqa
@@ -227,7 +228,8 @@ class Task2TestCase(KermaTestCase):
         await client.write(
             b'{"type":"getobject","objectid":"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"}\n')
         response = await client.readline()
-        self.assertIn(b'"62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c"', response)
+        self.assertIn(
+            b'"62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c"', response)
         self.assertIn(b'"type":"object"', response)
         await client.close()
 
@@ -249,7 +251,8 @@ class Task2TestCase(KermaTestCase):
         await client.write(
             b'{"type":"getobject","objectid":"d33ac384ea704025a6cac53f669c8e924eff7205b0cd0d6a231f0881b6265a8e  "}\n')
         response = await client.readline()
-        self.assertIn(b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
+        self.assertIn(
+            b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
         self.assertIn(b'"type":"object"', response)
         await client.close()
 
@@ -272,7 +275,8 @@ class Task2TestCase(KermaTestCase):
         await client2.write(
             b'{"type":"getobject","objectid":"d33ac384ea704025a6cac53f669c8e924eff7205b0cd0d6a231f0881b6265a8e"}\n')
         response = await client2.readline()
-        self.assertIn(b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
+        self.assertIn(
+            b'"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
         self.assertIn(b'"type":"object"', response)
         await client.close()
         await client2.close()
@@ -288,7 +292,8 @@ class Task2TestCase(KermaTestCase):
                            b'"value":50000000000000}],"type":"transaction"}}\n')
 
         response = await client2.readline()
-        self.assertIn(b'"objectid":"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
+        self.assertIn(
+            b'"objectid":"48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"', response)
         self.assertIn(b'"type":"ihaveobject"', response)
         await client.close()
         await client2.close()
@@ -300,7 +305,8 @@ class Task2TestCase(KermaTestCase):
         await client.write(
             b'{"type":"ihaveobject","objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"}\n')
         response = await client.readline()
-        self.assertIn(b'"objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"', response)
+        self.assertIn(
+            b'"objectid":"3e8174073cb429906c1a04d739b309f435d9333eed3f2904aa4d6ff10d01277b"', response)
         self.assertIn(b'"type":"getobject"', response)
         await client.close()
 
@@ -474,7 +480,7 @@ class Task3TestCase(KermaTestCase):
         await client.write_dict(block_message)
         self.assertDictEqual(ihaveobject_message, await client.read_dict())
 
-    async def append_block2(self, client):
+    async def append_block2_cb(self, client):
         tx_block2_after_genesis = {
             "height": 2, "outputs": [
                 {
@@ -490,14 +496,14 @@ class Task3TestCase(KermaTestCase):
         self.assertDictEqual(ihaveobject_message, await client.write_tx(tx_block2_after_genesis))
 
         block_message = {
-            "object": {
-                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624221079,
-                "miner": "Snekel testminer",
-                "nonce": "000000000000000000000000000000000000000000000000000000004d82fc68",
-                "note": "Second block after genesis with CBTX",
-                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
-                "txids": ["73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"], "type": "block"
-            }, "type": "object"
+                "object": {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624221079,
+                    "miner": "Snekel testminer",
+                    "nonce": "000000000000000000000000000000000000000000000000000000004d82fc68",
+                    "note": "Second block after genesis with CBTX",
+                    "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                    "txids": ["73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"], "type": "block"
+                }, "type": "object"
         }
         ihaveobject_message = {
             "type": "ihaveobject",
@@ -506,14 +512,75 @@ class Task3TestCase(KermaTestCase):
         await client.write_dict(block_message)
         self.assertDictEqual(ihaveobject_message, await client.read_dict())
 
-    @unittest.skip("TODO implement")
+    async def append_block2_cb_tx(self, client):
+        cb_block2_after_genesis = {
+            "height": 2, "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+        }
+        self.assertDictEqual(ihaveobject_message, await client.write_tx(cb_block2_after_genesis))
+
+        tx_block2_after_genesis = {
+            "inputs": [
+                {
+                "outpoint": {
+                    "index": 0,
+                    "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                },
+                "sig": "49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b"
+                }
+            ],
+            "outputs": [
+                {
+                "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                "value": 50
+                }
+            ],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+        }
+        self.assertDictEqual(ihaveobject_message, await client.write_tx(tx_block2_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624221079,
+                "miner": "Snekel testminer",
+                "nonce": "00000000000000000000000000000000000000000000000000000000182b95ea",
+                "note": "Second block after genesis with CBTX and TX",
+                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                "txids": [
+                "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2",
+                "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+                ],
+                "type": "block"
+            },
+            "type": "object"
+            }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "000000021dc4cfdcd0970084949f94da17f97504e1cc3e354851bb4768842b57"
+        }
+        await client.write_dict(block_message)
+        self.assertDictEqual(ihaveobject_message, await client.read_dict())
+
     async def test_sendBlockTwoTransactionSpendTheSameOutput_shouldReceiveErrorMessage(self):
         # d. There are two transactions in the block that spend the same output.
         client1 = await Client.new_established()
 
         await self.append_block0(client1)
         await self.append_block1(client1)
-        await self.append_block2(client1)
+        await self.append_block2_cb_tx(client1)
 
         tx_1 = {
             "inputs": [{
@@ -571,14 +638,13 @@ class Task3TestCase(KermaTestCase):
         self.assertIn("error", await client1.read_dict())
         await client1.close()
 
-    @unittest.skip("TODO implement")
     async def test_sendBlockTransactionAttemptsToSpendAnOutput_shouldReceiveErrorMessage(self):
         # e. A transaction attempts to spend an output
         client1 = await Client.new_established()
 
         await self.append_block0(client1)
         await self.append_block1(client1)
-        await self.append_block2(client1)
+        await self.append_block2_cb_tx(client1)
 
         tx = {
             "inputs": [{
@@ -699,6 +765,8 @@ class Task3TestCase(KermaTestCase):
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
+        await self.append_block0(client1)
+
         tx_cb_message = {
             "object": {
                 "height": 1, "outputs": [{
@@ -754,6 +822,7 @@ class Task3TestCase(KermaTestCase):
     async def test_sendBlockTwoCoinbaseTransactions_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
+        await self.append_block0(client1)
         tx_cb_1_message = {
             "object": {
                 "height": 1, "outputs": [{
@@ -797,6 +866,8 @@ class Task3TestCase(KermaTestCase):
 
     async def test_sendBlockCoinbaseTransactionSpentInAnotherTransactionSameBlock_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
+
+        await self.append_block0(client1)
 
         cbtx_message = {
             "object": {
