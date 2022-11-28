@@ -24,7 +24,7 @@ class Objects:
         return hashlib.sha256(canonical_object).hexdigest()
 
     def height(self, object_id: str) -> int:
-        value = self._db.get(b'object:' + bytes.fromhex(object_id))
+        value = self._db.get(b'height:' + bytes.fromhex(object_id))
         if not value:
             raise KeyError(object_id)
         return int.from_bytes(value, 'big', signed=False)
