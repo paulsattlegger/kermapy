@@ -18,6 +18,8 @@ HOST = "127.0.0.1"
 PORT = 19000
 HELLO = b'{"type":"hello","version":"0.8.0","agent":"Kermapy 0.0.x"}\n'
 GET_PEERS = b'{"type":"getpeers"}\n'
+ERROR_PARSE_JSON = b'{"error":"Failed to parse incoming message as JSON","type":"error"}\n'
+
 
 
 class Client:
@@ -110,6 +112,7 @@ class Task1TestCase(KermaTestCase):
         response2 = await client2.readline()
         self.assertIn(b'"type":"hello"', response1)
         self.assertIn(b'"type":"hello"', response2)
+        await client.close()
         await client2.close()
 
     async def test_getValidPeers(self):
@@ -138,7 +141,7 @@ class Task1TestCase(KermaTestCase):
         await client.readline()
         await client.write(GET_PEERS)
         response = await client.readline()
-        self.assertIn(b'"type":"error"', response)
+        self.assertIn(b'{"error":"Failed to validate incoming message: \'version\' is a required property","type":"error"}\n', response)
         await client.close()
 
     async def test_getErrorWrongPattern1(self):
@@ -146,7 +149,7 @@ class Task1TestCase(KermaTestCase):
         client = await Client.new_established()
         await client.write(b'Wbgygvf7rgtyv7tfbgy{{{\n')
         response = await client.readline()
-        self.assertIn(b'"type":"error"', response)
+        self.assertIn(ERROR_PARSE_JSON, response)
         await client.close()
 
     async def test_getErrorWrongPattern2(self):
@@ -154,7 +157,7 @@ class Task1TestCase(KermaTestCase):
         client = await Client.new_established()
         await client.write(b'"type":"diufygeuybhv"\n')
         response = await client.readline()
-        self.assertIn(b'"type":"error"', response)
+        self.assertIn(ERROR_PARSE_JSON, response)
         await client.close()
 
     async def test_getErrorWrongPattern3(self):
@@ -162,7 +165,7 @@ class Task1TestCase(KermaTestCase):
         client = await Client.new_established()
         await client.write(b'"type":"hello"\n')
         response = await client.readline()
-        self.assertIn(b'"type":"error"', response)
+        self.assertIn(ERROR_PARSE_JSON, response)
         await client.close()
 
     async def test_getErrorWrongPattern4(self):
@@ -170,7 +173,7 @@ class Task1TestCase(KermaTestCase):
         client = await Client.new_established()
         await client.write(b'"type":"hello","version":"jd3.x"\n')
         response = await client.readline()
-        self.assertIn(b'"type":"error"', response)
+        self.assertIn(ERROR_PARSE_JSON, response)
         await client.close()
 
     async def test_getErrorWrongPattern5(self):
@@ -178,7 +181,7 @@ class Task1TestCase(KermaTestCase):
         client = await Client.new_established()
         await client.write(b'"type":"hello","version":"5.8.2"\n')
         response = await client.readline()
-        self.assertIn(b'"type":"error"', response)
+        self.assertIn(ERROR_PARSE_JSON, response)
         await client.close()
 
     async def test_getPeersAfterReConnect(self):
@@ -212,7 +215,7 @@ class Task1TestCase(KermaTestCase):
         client = await Client.new_established()
         await client.write(b'\xFF\n')
         response = await client.readline()
-        self.assertIn(b'"type":"error"', response)
+        self.assertIn(ERROR_PARSE_JSON, response)
         await client.close()
 
 
@@ -381,7 +384,7 @@ class Task3TestCase(KermaTestCase):
 
     async def test_sendBlockInvalidTransaction_shouldReceiveErrorMessage(self):
         # c. There is an invalid transaction in the block.
-        client1 = await Client.new_established()
+        client = await Client.new_established()
 
         block_message = {
             "object":
@@ -400,14 +403,14 @@ class Task3TestCase(KermaTestCase):
             "type": "object"
         }
 
-        await client1.write_dict(block_message)
+        await client.write_dict(block_message)
 
         getobject_message = {
             "type": "getobject",
             "objectid": "2374cb9b22bb0b1d865397e4ee88de4532e8fbf5232a32f956298d703ea8f913"
         }
 
-        self.assertDictEqual(getobject_message, await client1.read_dict())
+        self.assertDictEqual(getobject_message, await client.read_dict())
 
         tx_message = {
             "object": {
@@ -423,11 +426,11 @@ class Task3TestCase(KermaTestCase):
             }, "type": "object"
         }
 
-        await client1.write_dict(tx_message)
+        await client.write_dict(tx_message)
 
-        self.assertIn("error", await client1.read_dict())
-
-        await client1.close()
+        response = await client.read_dict();
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block contains transactions that could not be received', response['error'])
 
     async def append_block0(self, client):
         block_message = {
@@ -635,8 +638,11 @@ class Task3TestCase(KermaTestCase):
 
         await client1.write_dict(double_spend_2_block)
 
-        self.assertIn("error", await client1.read_dict())
-        await client1.close()
+        response = await client1.read_dict();
+        self.assertIn("error", response['type'])
+        self.assertIn("Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'", response['error'])
+
+        client1.close()    
 
     async def test_sendBlockTransactionAttemptsToSpendAnOutput_shouldReceiveErrorMessage(self):
         # e. A transaction attempts to spend an output
@@ -680,8 +686,11 @@ class Task3TestCase(KermaTestCase):
 
         await client1.write_dict(double_spend_1_block)
 
-        self.assertIn("error", await client1.read_dict())
-        await client1.close()
+        response = await client1.read_dict();
+        self.assertIn("error", response['type'])
+        self.assertIn("Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'", response['error'])
+
+        client1.close()
 
     async def test_sendBlockCoinbaseTransactionExceedsBlockRewards_shouldReceiveErrorMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
@@ -720,7 +729,11 @@ class Task3TestCase(KermaTestCase):
 
         await client1.write_dict(block_message)
 
-        self.assertIn("error", await client1.read_dict())
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block with coinbase transaction that exceed block rewards and the fees', response['error'])
+
+        client1.close()
 
     async def test_sendBlockCoinbaseTransactionNotExceedsBlockRewardsAndFees_shouldReceiveIHaveObjectMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
@@ -853,9 +866,10 @@ class Task3TestCase(KermaTestCase):
         }
         await client1.write_dict(block_message)
         response = await client1.read_dict()
-        self.assertIn("error", response)
-        self.assertIn("exceed", response["error"])
-        self.assertIn("fees", response["error"])
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block with coinbase transaction that exceed block rewards and the fees', response["error"])
+
+        await client1.close()
 
     async def test_sendBlockCoinbaseTransactionHeightNotMatchingBlockHeight_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
@@ -893,8 +907,10 @@ class Task3TestCase(KermaTestCase):
         }
         await client1.write_dict(block_message)
 
-        self.assertIn("error", await client1.read_dict())
-
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block with coinbase transaction height does not match block height', response["error"])
+        
         await client1.close()
 
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
@@ -950,8 +966,10 @@ class Task3TestCase(KermaTestCase):
         }
         await client1.write_dict(block_message)
 
-        self.assertIn("error", await client1.read_dict())
-
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn("Could not find UTXO entry for key '48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb_62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c_0'", response["error"])
+        
         await client1.close()
 
     async def test_sendBlockTwoCoinbaseTransactions_shouldReceiveErrorMessage(self):
@@ -995,8 +1013,10 @@ class Task3TestCase(KermaTestCase):
         }
         await client1.write_dict(block_message)
 
-        self.assertIn("error", await client1.read_dict())
-
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block does not satisfy the proof-of-work equation', response["error"])
+        
         await client1.close()
 
     async def test_sendBlockCoinbaseTransactionSpentInAnotherTransactionSameBlock_shouldReceiveErrorMessage(self):
@@ -1055,13 +1075,17 @@ class Task3TestCase(KermaTestCase):
         }
 
         await client1.write_dict(cbtx_spend_in_same_block_message)
-        self.assertIn("error", await client1.read_dict())
 
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block with coinbase transaction spend in another transaction', response["error"])
+        
         await client1.close()
 
-    # 2. On receiving an object message from Grader 1 containing a valid block, the block must
-    #    be gossiped to Grader 2 by sending an ihaveobject message with the correct blockid.
     async def test_sendValidBlockGrader1_shouldReceiveIHaveObjectGrader2(self):
+        # 2. On receiving an object message from Grader 1 containing a valid block, the block must
+        #    be gossiped to Grader 2 by sending an ihaveobject message with the correct blockid.
+   
         client1 = await Client.new_established()
         client2 = await Client.new_established()
 
@@ -1142,7 +1166,9 @@ class Task3TestCase(KermaTestCase):
         await client1.readline()
         await client2.readline()
 
-        self.assertIn("error", await client1.read_dict())
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block contains transactions that could not be received', response["error"])
 
         await client1.close()
         await client2.close()
