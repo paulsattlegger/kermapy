@@ -62,7 +62,6 @@ class Node:
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
         self._utxos: utxo.UtxoDb = utxo.UtxoDb(storage_path)
-        self.ignore_pow = False
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -253,7 +252,7 @@ class Node:
         try:
             await asyncio.gather(*[self.resolve_shallow(txid, 5) for txid in unknown_txids])
         except asyncio.TimeoutError:
-            raise ProtocolError("Unable to receive all the txids of the block")
+            raise ProtocolError("Received block contains transactions that could not be received")
         # TODO For each transaction in the block, check that the transaction is valid, and update your
         #  UTXO set based on the transaction
         txs = [self._objs.get(txid) for txid in block["txids"]]
@@ -289,11 +288,15 @@ class Node:
                 for inpt in tx["inputs"]:
                     txid = inpt["outpoint"]["txid"]
                     if txid == coinbase_txid:
-                        raise ProtocolError(
-                            "Received block with coinbase transaction spend in another transaction")
-        # TODO Validate the coinbase transaction if there is one.
-        # TODO The height in the coinbase transaction must match the height of the block the transaction is contained
-        #  in.
+                        raise ProtocolError("Received block with coinbase transaction spend in another transaction")
+            # TODO Check the height in the coinbase transaction must match the height of the block the transaction is
+            # contained in.
+            # Check the coinbase transaction has no outputs that exceeds the block rewards and the fees.
+            block_rewards = 50 * (10 ** 12)
+            fees = 0  # TODO
+            outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
+            if outputs > block_rewards + fees:
+                raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
 
         self._utxos.put(block_id, utxo_set)
 
