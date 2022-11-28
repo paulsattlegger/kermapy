@@ -68,7 +68,7 @@ background_tasks = set()
 class KermaTestCase(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self._tmp_directory = tempfile.mkdtemp()
-        self._node = Node(f"{HOST}:{PORT}", self._tmp_directory)
+        self._node = Node(f"{HOST}:{PORT}", self._tmp_directory, 0.5)
         await self._node.start_server()
         task = asyncio.create_task(self._node.serve())
         background_tasks.add(task)
@@ -449,7 +449,7 @@ class Task3TestCase(KermaTestCase):
         self.assertDictEqual(ihaveobject_message, await client.read_dict())
 
     async def append_block1(self, client):
-        tx_block1_after_genesis = {
+        cb_block1_after_genesis = {
             "height": 1, "outputs": [
                 {
                     "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
@@ -461,7 +461,7 @@ class Task3TestCase(KermaTestCase):
             "type": "ihaveobject",
             "objectid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
         }
-        self.assertDictEqual(ihaveobject_message, await client.write_tx(tx_block1_after_genesis))
+        self.assertDictEqual(ihaveobject_message, await client.write_tx(cb_block1_after_genesis))
 
         block_message = {
             "object": {
@@ -683,7 +683,7 @@ class Task3TestCase(KermaTestCase):
         self.assertIn("error", await client1.read_dict())
         await client1.close()
 
-    async def test_sendBlockCoinbaseTransactionExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
+    async def test_sendBlockCoinbaseTransactionExceedsBlockRewards_shouldReceiveErrorMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
         client1 = await Client.new_established()
 

@@ -52,7 +52,7 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, storage_path: str) -> None:
+    def __init__(self, listen_addr: str, storage_path: str, timeout: int = 5) -> None:
         self._server = None
         self._listen_addr: str = listen_addr
         self._peers: peers.Peers = peers.Peers(storage_path)
@@ -62,6 +62,7 @@ class Node:
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
         self._utxos: utxo.UtxoDb = utxo.UtxoDb(storage_path)
+        self._timeout = timeout
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -238,7 +239,7 @@ class Node:
         # Ensure the target is the one required
         if block["T"] != "00000002af000000000000000000000000000000000000000000000000000000":
             raise ProtocolError("Received block with invalid target")
-        if block['created'] > time.time():
+        if block["created"] > time.time():
             raise ProtocolError("Received block with timestamp in the future")
         # Check the proof-of-work
         block_id = objects.Objects.id(block)
@@ -251,7 +252,7 @@ class Node:
         unknown_txids = [txid for txid in block["txids"]
                          if txid not in self._objs]
         try:
-            await asyncio.gather(*[self.resolve_shallow(txid, 5) for txid in unknown_txids])
+            await asyncio.gather(*[self.resolve_shallow(txid, self._timeout) for txid in unknown_txids])
         except asyncio.TimeoutError:
             raise ProtocolError("Received block contains transactions that could not be received")
         # For each transaction in the block, check that the transaction is valid, and update UTXO set based on the
