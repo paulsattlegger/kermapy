@@ -266,9 +266,14 @@ class Node:
                     txid = inpt["outpoint"]["txid"]
                     if txid == coinbase_txid:
                         raise ProtocolError("Received block with coinbase transaction spend in another transaction")
-        # TODO Validate the coinbase transaction if there is one.
-        # TODO The height in the coinbase transaction must match the height of the block the transaction is contained
-        #  in.
+            # TODO Check the height in the coinbase transaction must match the height of the block the transaction is
+            # contained in.
+            # Check the coinbase transaction has no outputs that exceeds the block rewards and the fees.
+            block_rewards = 50 * (10 ** 12)
+            fees = 0  # TODO
+            outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
+            if outputs > block_rewards + fees:
+                raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
 
 
 async def main():

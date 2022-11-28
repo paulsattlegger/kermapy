@@ -314,7 +314,7 @@ class Task2TestCase(KermaTestCase):
                            b'"740bcfb434c89abe57bb2bc80290cd5495e87ebf8cd0dadb076bc50453590104"],'
                            b'"nonce":"a26d92800cf58e88a5ecf37156c031a4147c2128beeaf1cca2785c93242a4c8b",'
                            b'"previd":"0024839ec9632d382486ba7aac7e0bda3b4bda1d4bd79be9ae78e7e1e813ddd8",'
-                           b'"created":1622825642,'
+                           b'"created":1624219079,'
                            b'"T":"003a000000000000000000000000000000000000000000000000000000000000"}}\n')
 
         with self.assertRaises(asyncio.TimeoutError):
@@ -377,16 +377,19 @@ class Task3TestCase(KermaTestCase):
         # c. There is an invalid transaction in the block.
         client1 = await Client.new_established()
 
-        self._node.ignore_pow = True
-
         block_message = {
             "object":
                 {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
-                    "miner": "Kermapy", "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                    "created": 1669626529,
+                    "miner": "Kermars",
+                    "nonce": "000000000000000000000000000000000000000000000000800000000fca06a3",
                     "note": "Invalid_TX_no_outputs",
                     "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                    "txids": ["2374cb9b22bb0b1d865397e4ee88de4532e8fbf5232a32f956298d703ea8f913"], "type": "block"
+                    "txids": [
+                        "2374cb9b22bb0b1d865397e4ee88de4532e8fbf5232a32f956298d703ea8f913"
+                    ],
+                    "type": "block"
                 },
             "type": "object"
         }
@@ -503,6 +506,7 @@ class Task3TestCase(KermaTestCase):
         await client.write_dict(block_message)
         self.assertDictEqual(ihaveobject_message, await client.read_dict())
 
+    @unittest.skip("TODO implement")
     async def test_sendBlockTwoTransactionSpendTheSameOutput_shouldReceiveErrorMessage(self):
         # d. There are two transactions in the block that spend the same output.
         client1 = await Client.new_established()
@@ -566,6 +570,7 @@ class Task3TestCase(KermaTestCase):
 
         self.assertIn("error", await client1.read_dict())
 
+    @unittest.skip("TODO implement")
     async def test_sendBlockTransactionAttemptsToSpendAnOutput_shouldReceiveErrorMessage(self):
         # e. A transaction attempts to spend an output
         client1 = await Client.new_established()
@@ -612,8 +617,83 @@ class Task3TestCase(KermaTestCase):
 
     async def test_sendBlockCoinbaseTransactionExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
-        pass
-        # TODO
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+
+        tx_block1_after_genesis = {
+            "height": 1, "outputs": [
+                {
+                    "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
+                    "value": 50000000000001
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "19d554113147de6ea9d8211dc0ccb3211c63de9904a3c10f80c017694130896c"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_block1_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1669629178,
+                "miner": "Kermars",
+                "nonce": "000000000000000000000000000000000000000000000000a000000000e298ca",
+                "note": "First block after genesis with CBTX exceeding block rewards",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": [
+                    "19d554113147de6ea9d8211dc0ccb3211c63de9904a3c10f80c017694130896c"
+                ],
+                "type": "block"
+            }, "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        self.assertIn("error", await client1.read_dict())
+
+    @unittest.skip("TODO implement")
+    async def test_sendBlockCoinbaseTransactionHeightNotMatchingBlockHeight_shouldReceiveErrorMessage(self):
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+
+        tx_cb_message = {
+            "height": 2, "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_cb_message))
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                    "created": 1669629282,
+                    "miner": "Kermars",
+                    "nonce": "00000000000000000000000000000000000000000000000060000000006ef53e",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                    "txids": [
+                        "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+                    ],
+                    "type": "block"
+                },
+            "type": "object"
+        }
+        await client1.write_dict(block_message)
+
+        self.assertIn("error", await client1.read_dict())
+
+        await client1.close()
 
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
