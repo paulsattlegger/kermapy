@@ -58,7 +58,7 @@ class UtxoDb:
             try:
                 stored_tx = objs.get(tx_id)
                 self._adjust_set_for_transaction(utxo_set, stored_tx, objs)
-            except KeyError:
+            except KeyError as e:
                 raise UtxoError(
                     f"Could not find transaction '{tx_id}' in object database")
 
@@ -80,9 +80,9 @@ class UtxoDb:
                     raise UtxoError(
                         f"Could not find input transaction '{input_tx_id}' in object database")
 
-                pubKey = prev_tx["output"][input_tx_index]["pubkey"]
+                pubKey = prev_tx["outputs"][input_tx_index]["pubkey"]
 
-                utxo_key = pubKey + "_" + input_tx_index
+                utxo_key = pubKey + "_" + str(input_tx_index)
 
                 # Check if output is till in UTXO, otherwise it has been spent already
                 if utxo_key not in utxo_set:
