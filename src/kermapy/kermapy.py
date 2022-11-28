@@ -241,7 +241,7 @@ class Node:
             raise ProtocolError("Received block with timestamp in the future")
         # Check the proof-of-work
         block_id = objects.Objects.id(block)
-        if int(block_id, base=16) >= int(block['T'], base=16) and not self.ignore_pow:
+        if int(block_id, base=16) >= int(block['T'], base=16):
             raise ProtocolError(
                 "Received block does not satisfy the proof-of-work equation")
         # Check that for all the txids in the block, you have the corresponding transaction in your
