@@ -496,14 +496,14 @@ class Task3TestCase(KermaTestCase):
         self.assertDictEqual(ihaveobject_message, await client.write_tx(tx_block2_after_genesis))
 
         block_message = {
-                "object": {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624221079,
-                    "miner": "Snekel testminer",
-                    "nonce": "000000000000000000000000000000000000000000000000000000004d82fc68",
-                    "note": "Second block after genesis with CBTX",
-                    "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
-                    "txids": ["73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"], "type": "block"
-                }, "type": "object"
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624221079,
+                "miner": "Snekel testminer",
+                "nonce": "000000000000000000000000000000000000000000000000000000004d82fc68",
+                "note": "Second block after genesis with CBTX",
+                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                "txids": ["73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"], "type": "block"
+            }, "type": "object"
         }
         ihaveobject_message = {
             "type": "ihaveobject",
@@ -530,17 +530,17 @@ class Task3TestCase(KermaTestCase):
         tx_block2_after_genesis = {
             "inputs": [
                 {
-                "outpoint": {
-                    "index": 0,
-                    "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
-                },
-                "sig": "49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b"
+                    "outpoint": {
+                        "index": 0,
+                        "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                    },
+                    "sig": "49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b"
                 }
             ],
             "outputs": [
                 {
-                "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
-                "value": 50
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50
                 }
             ],
             "type": "transaction"
@@ -560,13 +560,13 @@ class Task3TestCase(KermaTestCase):
                 "note": "Second block after genesis with CBTX and TX",
                 "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
                 "txids": [
-                "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2",
-                "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+                    "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2",
+                    "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
                 ],
                 "type": "block"
             },
             "type": "object"
-            }
+        }
         ihaveobject_message = {
             "type": "ihaveobject",
             "objectid": "000000021dc4cfdcd0970084949f94da17f97504e1cc3e354851bb4768842b57"
