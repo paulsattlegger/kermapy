@@ -118,4 +118,4 @@ def _validate_outputs(transaction: dict, total_input_value: int) -> None:
         raise InvalidTransaction(
             "Sum of input values is smaller than the sum of the specified output values")
     
-    return total_input_value
+    return total_output_value
