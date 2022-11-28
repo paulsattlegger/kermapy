@@ -919,7 +919,6 @@ class Task3TestCase(KermaTestCase):
 
         await client1.close()
 
-    @unittest.skip("TODO")
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
@@ -967,9 +966,9 @@ class Task3TestCase(KermaTestCase):
         block_message = {
             "object": {
                 "T": "00000002af000000000000000000000000000000000000000000000000000000",
-                "created": 1624221079,
-                "miner": "Snekel testminer",
-                "nonce": "TODO",
+                "created": 1669675927,
+                "miner": "Kermars",
+                "nonce": "00000000000000000000000000000000000000000000000040000000003983aa",
                 "note": "Second block after genesis with CBTX and TX",
                 "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
                 "txids": [
@@ -980,12 +979,7 @@ class Task3TestCase(KermaTestCase):
             },
             "type": "object"
         }
-        ihaveobject_message = {
-            "type": "ihaveobject",
-            "objectid": "TODO"
-        }
         await client1.write_dict(block_message)
-        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
 
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
