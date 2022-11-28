@@ -1018,11 +1018,16 @@ class Task3TestCase(KermaTestCase):
         block_message = {
             "object":
                 {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
-                    "miner": "Kermapy", "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                    "created": 1669676789,
+                    "miner": "Kermars",
+                    "nonce": "00000000000000000000000000000000000000000000000080000000087eee3d",
                     "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                    "txids": ["2fb7adb654b373e85c6b5c596cc110dcb6643ee138768f4aa947e9ddb7d91f8d",
-                              "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"], "type": "block"
+                    "txids": [
+                        "2fb7adb654b373e85c6b5c596cc110dcb6643ee138768f4aa947e9ddb7d91f8d",
+                        "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"
+                    ],
+                    "type": "block"
                 },
             "type": "object"
         }
@@ -1030,7 +1035,7 @@ class Task3TestCase(KermaTestCase):
 
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn('Received block does not satisfy the proof-of-work equation', response["error"])
+        self.assertIn("more than one coinbase", response["error"])
 
         await client1.close()
 
@@ -1231,7 +1236,7 @@ class Task3TestCase(KermaTestCase):
 
         response = await client.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn('Received block does not satisfy the proof-of-work equation', response['error'])
+        self.assertIn("Failed to validate", response['error'])
 
         await client.close()
 
@@ -1255,7 +1260,7 @@ class Task3TestCase(KermaTestCase):
 
         response = await client.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn('Received block does not satisfy the proof-of-work equation', response['error'])
+        self.assertIn("Failed to validate", response['error'])
 
         await client.close()
 
