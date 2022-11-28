@@ -23,8 +23,14 @@ class Objects:
         canonical_object = canonicalize(obj)
         return hashlib.sha256(canonical_object).hexdigest()
 
+    def height(self, object_id: str) -> int:
+        value = self._db.get(b'object:' + bytes.fromhex(object_id))
+        if not value:
+            raise KeyError(object_id)
+        return int.from_bytes(value, 'big', signed=False)
+
     def get(self, object_id: str) -> dict:
-        value = self._db.get(bytes.fromhex(object_id))
+        value = self._db.get(b'object:' + bytes.fromhex(object_id))
         if not value:
             raise KeyError(object_id)
         return json.loads(value)
@@ -34,7 +40,14 @@ class Objects:
         for event in self._events[object_id]:
             event.set()
         del self._events[object_id]
-        self._db.put(bytes.fromhex(object_id), canonicalize(obj))
+
+        if obj["type"] == "block":
+            if obj["previd"]:
+                height = self.height(obj["previd"]) + 1
+            else:
+                height = 0
+            self._db.put(b'height:' + bytes.fromhex(object_id), int.to_bytes(height, 256, 'big', signed=False))
+        self._db.put(b'object:' + bytes.fromhex(object_id), canonicalize(obj))
 
     def event_for(self, object_id: str) -> asyncio.Event:
         event = asyncio.Event()
@@ -42,4 +55,4 @@ class Objects:
         return event
 
     def __contains__(self, object_id: str):
-        return self._db.get(bytes.fromhex(object_id)) is not None
+        return self._db.get(b'object:' + bytes.fromhex(object_id)) is not None

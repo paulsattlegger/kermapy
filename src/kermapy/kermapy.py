@@ -289,8 +289,10 @@ class Node:
                     txid = inpt["outpoint"]["txid"]
                     if txid == coinbase_txid:
                         raise ProtocolError("Received block with coinbase transaction spend in another transaction")
-            # TODO Check the height in the coinbase transaction must match the height of the block the transaction is
+            # Check the height in the coinbase transaction must match the height of the block the transaction is
             # contained in.
+            if coinbase_txs[0]["height"] != self._objs.height(block["previd"]) + 1:
+                raise ProtocolError("Received block with coinbase transaction height does not match block height")
             # Check the coinbase transaction has no outputs that exceeds the block rewards and the fees.
             block_rewards = 50 * (10 ** 12)
             fees = 0  # TODO
