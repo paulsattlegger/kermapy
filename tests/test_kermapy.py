@@ -432,6 +432,8 @@ class Task3TestCase(KermaTestCase):
         self.assertIn("error", response['type'])
         self.assertIn('Received block contains transactions that could not be received', response['error'])
 
+        await client.close()
+
     async def append_block0(self, client):
         block_message = {
             "object":
@@ -802,6 +804,7 @@ class Task3TestCase(KermaTestCase):
         }
         await client1.write_dict(block_message)
         self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+        await client1.close()
 
     async def test_sendBlockCoinbaseTransactionExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
@@ -1217,6 +1220,7 @@ class Task3TestCase(KermaTestCase):
         response = await client.read_dict();
         self.assertIn("error", response['type'])
         self.assertIn('Received block does not satisfy the proof-of-work equation', response['error'])
+        
         await client.close()
 
 
@@ -1241,6 +1245,7 @@ class Task3TestCase(KermaTestCase):
         response = await client.read_dict();
         self.assertIn("error", response['type'])
         self.assertIn('Received block does not satisfy the proof-of-work equation', response['error'])
+        
         await client.close()
 
 
