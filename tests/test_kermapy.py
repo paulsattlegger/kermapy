@@ -580,7 +580,7 @@ class Task3TestCase(KermaTestCase):
 
         await self.append_block0(client1)
         await self.append_block1(client1)
-        await self.append_block2_cb_tx(client1)
+        await self.append_block2_cb(client1)
 
         tx_1 = {
             "inputs": [{
