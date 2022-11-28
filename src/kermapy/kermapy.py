@@ -181,7 +181,7 @@ class Node:
                     if obj["type"] == "transaction":
                         self.validate_transaction(obj)
                     elif obj["type"] == "block":
-                        await self.handle_block(obj)
+                        await self.validate_block(obj)
                     self._objs.put(obj)
                     logging.info(
                         f"Saved object: {obj} with object ID: {object_id}")
@@ -232,7 +232,7 @@ class Node:
         })
         await asyncio.wait_for(event.wait(), timeout)
 
-    async def handle_block(self, block: dict) -> None:
+    async def validate_block(self, block: dict) -> None:
         # Check that the block contains all required fields and that they are of the format
         validate(block, schemas.BLOCK)
         # Ensure the target is the one required
@@ -254,22 +254,16 @@ class Node:
             await asyncio.gather(*[self.resolve_shallow(txid, 5) for txid in unknown_txids])
         except asyncio.TimeoutError:
             raise ProtocolError("Received block contains transactions that could not be received")
-        # TODO For each transaction in the block, check that the transaction is valid, and update your
-        #  UTXO set based on the transaction
+        # For each transaction in the block, check that the transaction is valid, and update UTXO set based on the
+        # transaction
         txs = [self._objs.get(txid) for txid in block["txids"]]
-
+        not_coinbase_txs = [tx for tx in txs if "inputs" in tx]
+        coinbase_txs = [tx for tx in txs if "inputs" not in tx]
         fees = 0
-
         # Validate all transactions and calculate fees
-        for tx in txs:
+        for tx in not_coinbase_txs:
             metadata = self.validate_transaction(tx)
-
-            # is none when coinbase tx
-            if metadata is not None:
-                fees += metadata.total_input_value - metadata.total_output_value
-
-        utxo_set: dict
-
+            fees += metadata.total_input_value - metadata.total_output_value
         # Create new utxo set and check for problems while creation
         try:
             utxo_set = await self._utxos.create_item_async(block, self._objs, self.broadcast)
@@ -277,9 +271,6 @@ class Node:
             logging.warning("UTXO check was not successful")
             raise ProtocolError(
                 str(e))
-
-        not_coinbase_txs = [tx for tx in txs if "inputs" in tx]
-        coinbase_txs = [tx for tx in txs if "inputs" not in tx]
         # Check for coinbase transactions, there can be at most one coinbase transaction in a block
         if len(coinbase_txs) > 1:
             raise ProtocolError(
@@ -305,7 +296,6 @@ class Node:
             outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
             if outputs > block_rewards + fees:
                 raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
-
         self._utxos.put(block_id, utxo_set)
 
 

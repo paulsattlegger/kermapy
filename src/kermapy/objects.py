@@ -1,8 +1,9 @@
 import asyncio
 import hashlib
 import json
-from collections import defaultdict
 import pathlib
+from collections import defaultdict
+from weakref import WeakSet
 
 import plyvel
 
@@ -13,7 +14,7 @@ class Objects:
     def __init__(self, storage_path: str):
         adjusted_path = str(pathlib.Path(storage_path, "objects"))
         self._db: plyvel.DB = plyvel.DB(adjusted_path, create_if_missing=True)
-        self._events: dict[str, set[asyncio.Event]] = defaultdict(set)
+        self._events: dict[str, WeakSet[asyncio.Event]] = defaultdict(WeakSet)
 
     def close(self):
         return self._db.close()

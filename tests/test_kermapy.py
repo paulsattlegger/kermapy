@@ -332,7 +332,7 @@ class Task2TestCase(KermaTestCase):
 class Task3TestCase(KermaTestCase):
     # 1. On receiving an object message from Grader 1 containing any invalid block, Grader 1 must receive an error
     #    message and the transaction must not be gossiped to Grader 2.
-    async def test_handle_block_incorrectTarget_shouldRaiseProtocolError(self):
+    async def test_validate_block_incorrectTarget_shouldRaiseProtocolError(self):
         # a. The block has an incorrect target.
         block = {
             "T": "0000000000000000000000000000000000000000000000000000000000000000", "created": 1624229079,
@@ -343,12 +343,12 @@ class Task3TestCase(KermaTestCase):
             "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
         }
         with self.assertRaises(ProtocolError) as cm:
-            await self._node.handle_block(block)
+            await self._node.validate_block(block)
 
         the_exception = cm.exception
         self.assertIn("invalid target", str(the_exception))
 
-    async def test_handle_block_proofOfWorkInvalid_shouldRaiseProtocolError(self):
+    async def test_validate_block_proofOfWorkInvalid_shouldRaiseProtocolError(self):
         # b. The block has an invalid proof-of-work.
         block = {
             "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
@@ -359,12 +359,12 @@ class Task3TestCase(KermaTestCase):
             "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
         }
         with self.assertRaises(ProtocolError) as cm:
-            await self._node.handle_block(block)
+            await self._node.validate_block(block)
 
         the_exception = cm.exception
         self.assertIn("proof-of-work", str(the_exception))
 
-    async def test_handle_block_timestampFuture_shouldRaiseProtocolError(self):
+    async def test_validate_block_timestampFuture_shouldRaiseProtocolError(self):
         block = {
             "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": int(time.time() + 3600),
             "miner": "TUWien-Kerma",
@@ -374,7 +374,7 @@ class Task3TestCase(KermaTestCase):
             "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
         }
         with self.assertRaises(ProtocolError) as cm:
-            await self._node.handle_block(block)
+            await self._node.validate_block(block)
 
         the_exception = cm.exception
         self.assertIn("future", str(the_exception))
