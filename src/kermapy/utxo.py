@@ -1,11 +1,12 @@
 import asyncio
-from collections import defaultdict
 import json
 import pathlib
+from collections import defaultdict
 from typing import Callable
-import objects
+
 import plyvel
 
+import objects
 from org.webpki.json.Canonicalize import canonicalize
 
 
@@ -111,3 +112,6 @@ class UtxoDb:
 
     def __contains__(self, block_id: str):
         return self._db.get(bytes.fromhex(block_id)) is not None
+
+    def close(self):
+        return self._db.close()

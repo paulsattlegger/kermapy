@@ -80,6 +80,7 @@ class Node:
 
     async def shutdown(self):
         self._objs.close()
+        self._utxos.close()
         if self._server:
             self._server.close()
         for background_task in self._background_tasks:
@@ -295,11 +296,11 @@ class Node:
                     txid = inpt["outpoint"]["txid"]
                     if txid == coinbase_txid:
                         raise ProtocolError("Received block with coinbase transaction spend in another transaction")
-            # Check the height in the coinbase transaction must match the height of the block the transaction is
+            # Check that the height in the coinbase transaction matches the height of the block the transaction is
             # contained in.
             if coinbase_txs[0]["height"] != self._objs.height(block["previd"]) + 1:
                 raise ProtocolError("Received block with coinbase transaction height does not match block height")
-            # Check the coinbase transaction has no outputs that exceeds the block rewards and the fees.
+            # Check the coinbase transaction has no outputs that exceed the block rewards and the fees.
             block_rewards = 50 * (10 ** 12)
             outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
             if outputs > block_rewards + fees:

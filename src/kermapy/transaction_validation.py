@@ -13,6 +13,7 @@ from org.webpki.json.Canonicalize import canonicalize
 class InvalidTransaction(Exception):
     pass
 
+
 class TransactionMetadata:
     def __init__(self, total_input_value, total_output_value):
         self.total_input_value = total_input_value
@@ -45,7 +46,7 @@ def validate_transaction(transaction: dict, objs: objects.Objects) -> Transactio
     else:
         total_input_value = _validate_inputs(transaction, objs)
         total_output_value = _validate_outputs(transaction, total_input_value)
-        
+
         return TransactionMetadata(total_input_value, total_output_value)
 
 
@@ -108,7 +109,7 @@ def _validate_input_signature(tx_id: str, inpt: dict, transaction: dict, stored_
             f"Invalid signature for transaction '{tx_id}'")
 
 
-def _validate_outputs(transaction: dict, total_input_value: int) -> None:
+def _validate_outputs(transaction: dict, total_input_value: int) -> int:
     total_output_value = 0
 
     for output in transaction["outputs"]:
@@ -117,5 +118,5 @@ def _validate_outputs(transaction: dict, total_input_value: int) -> None:
     if total_input_value < total_output_value:
         raise InvalidTransaction(
             "Sum of input values is smaller than the sum of the specified output values")
-    
+
     return total_output_value
