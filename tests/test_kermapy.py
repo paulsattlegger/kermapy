@@ -569,6 +569,7 @@ class Task3TestCase(KermaTestCase):
         await client1.write_dict(double_spend_2_block)
 
         self.assertIn("error", await client1.read_dict())
+        await client1.close()
 
     @unittest.skip("TODO implement")
     async def test_sendBlockTransactionAttemptsToSpendAnOutput_shouldReceiveErrorMessage(self):
@@ -614,6 +615,7 @@ class Task3TestCase(KermaTestCase):
         await client1.write_dict(double_spend_1_block)
 
         self.assertIn("error", await client1.read_dict())
+        await client1.close()
 
     async def test_sendBlockCoinbaseTransactionExceedsBlockRewardsAndFees_shouldReceiveErrorMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
@@ -698,8 +700,6 @@ class Task3TestCase(KermaTestCase):
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
-        self._node.ignore_pow = True
-
         tx_cb_message = {
             "object": {
                 "height": 1, "outputs": [{
@@ -733,11 +733,16 @@ class Task3TestCase(KermaTestCase):
         block_message = {
             "object":
                 {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624229079,
-                    "miner": "Kermapy", "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                    "created": 1669629465,
+                    "miner": "Kermars",
+                    "nonce": "000000000000000000000000000000000000000000000000000000000acd429d",
                     "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                    "txids": ["d33ac384ea704025a6cac53f669c8e924eff7205b0cd0d6a231f0881b6265a8e",
-                              "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"], "type": "block"
+                    "txids": [
+                        "d33ac384ea704025a6cac53f669c8e924eff7205b0cd0d6a231f0881b6265a8e",
+                        "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"
+                    ],
+                    "type": "block"
                 },
             "type": "object"
         }
@@ -749,8 +754,6 @@ class Task3TestCase(KermaTestCase):
 
     async def test_sendBlockTwoCoinbaseTransactions_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
-
-        self._node.ignore_pow = True
 
         tx_cb_1_message = {
             "object": {

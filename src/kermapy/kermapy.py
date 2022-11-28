@@ -60,7 +60,6 @@ class Node:
             config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
-        self.ignore_pow = False
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -237,7 +236,7 @@ class Node:
         if block['created'] > time.time():
             raise ProtocolError("Received block with timestamp in the future")
         # Check the proof-of-work
-        if int(objects.Objects.id(block), base=16) >= int(block['T'], base=16) and not self.ignore_pow:
+        if int(objects.Objects.id(block), base=16) >= int(block['T'], base=16):
             raise ProtocolError("Received block does not satisfy the proof-of-work equation")
         # Check that for all the txids in the block, you have the corresponding transaction in your
         # local object database. If not, then send a "getobject" message to your peers in order
@@ -246,7 +245,7 @@ class Node:
         try:
             await asyncio.gather(*[self.resolve_shallow(txid, 5) for txid in unknown_txids])
         except asyncio.TimeoutError:
-            raise ProtocolError("Unable to receive all the txids of the block")
+            raise ProtocolError("Received block contains transactions that could not be received")
         # TODO For each transaction in the block, check that the transaction is valid, and update your
         #  UTXO set based on the transaction
         txs = [self._objs.get(txid) for txid in block["txids"]]
