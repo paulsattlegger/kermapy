@@ -1196,6 +1196,53 @@ class Task3TestCase(KermaTestCase):
         await client1.close()
         await client2.close()
 
+    async def test_sendBlockInvalidCharLengthMiner_shouldReceiveErrorMessage(self):
+        # c. There is an invalid transaction in the block.
+        client = await Client.new_established()
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
+                    "miner": "Invalid Note char length! Invalid Note char length! Invalid Note char length! Invalid Note char length! Invalid Note char length! ",
+                    "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
+                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
+                    "previd": None, "txids": [], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client.write_dict(block_message)
+
+        response = await client.read_dict();
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block does not satisfy the proof-of-work equation', response['error'])
+        await client.close()
+
+
+    async def test_sendBlockInvalidCharLengthNote_shouldReceiveErrorMessage(self):
+        # c. There is an invalid transaction in the block.
+        client = await Client.new_established()
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
+                    "miner": "dionyziz",
+                    "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
+                    "note": "Invalid Note char length! Invalid Note char length! Invalid Note char length! Invalid Note char length! Invalid Note char length!",
+                    "previd": None, "txids": [], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client.write_dict(block_message)
+
+        response = await client.read_dict();
+        self.assertIn("error", response['type'])
+        self.assertIn('Received block does not satisfy the proof-of-work equation', response['error'])
+        await client.close()
+
 
 if __name__ == "__main__":
     unittest.main()
