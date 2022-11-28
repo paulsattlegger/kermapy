@@ -21,7 +21,6 @@ GET_PEERS = b'{"type":"getpeers"}\n'
 ERROR_PARSE_JSON = b'{"error":"Failed to parse incoming message as JSON","type":"error"}\n'
 
 
-
 class Client:
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         self._reader = reader
@@ -428,7 +427,7 @@ class Task3TestCase(KermaTestCase):
 
         await client.write_dict(tx_message)
 
-        response = await client.read_dict();
+        response = await client.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn('Received block contains transactions that could not be received', response['error'])
 
@@ -640,11 +639,12 @@ class Task3TestCase(KermaTestCase):
 
         await client1.write_dict(double_spend_2_block)
 
-        response = await client1.read_dict();
+        response = await client1.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn("Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'", response['error'])
+        self.assertIn("Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'",
+                      response['error'])
 
-        client1.close()    
+        await client1.close()
 
     async def test_sendBlockTransactionAttemptsToSpendAnOutput_shouldReceiveErrorMessage(self):
         # e. A transaction attempts to spend an output
@@ -688,11 +688,12 @@ class Task3TestCase(KermaTestCase):
 
         await client1.write_dict(double_spend_1_block)
 
-        response = await client1.read_dict();
+        response = await client1.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn("Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'", response['error'])
+        self.assertIn("Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'",
+                      response['error'])
 
-        client1.close()
+        await client1.close()
 
     async def test_sendBlockCoinbaseTransactionExceedsBlockRewards_shouldReceiveErrorMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
@@ -733,9 +734,10 @@ class Task3TestCase(KermaTestCase):
 
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn('Received block with coinbase transaction that exceed block rewards and the fees', response['error'])
+        self.assertIn('Received block with coinbase transaction that exceed block rewards and the fees',
+                      response['error'])
 
-        client1.close()
+        await client1.close()
 
     async def test_sendBlockCoinbaseTransactionNotExceedsBlockRewardsAndFees_shouldReceiveIHaveObjectMessage(self):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
@@ -870,7 +872,8 @@ class Task3TestCase(KermaTestCase):
         await client1.write_dict(block_message)
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn('Received block with coinbase transaction that exceed block rewards and the fees', response["error"])
+        self.assertIn('Received block with coinbase transaction that exceed block rewards and the fees',
+                      response["error"])
 
         await client1.close()
 
@@ -913,66 +916,81 @@ class Task3TestCase(KermaTestCase):
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn('Received block with coinbase transaction height does not match block height', response["error"])
-        
+
         await client1.close()
 
+    @unittest.skip("TODO")
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
         await self.append_block0(client1)
+        await self.append_block1(client1)
 
-        tx_cb_message = {
-            "object": {
-                "height": 1, "outputs": [{
-                    "pubkey": "62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c",
+        cb_block2_after_genesis = {
+            "height": 2, "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
                     "value": 50000000000000
-                }], "type": "transaction"
-            }, "type": "object"
+                }],
+            "type": "transaction"
         }
-        await client1.write_dict(tx_cb_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(cb_block2_after_genesis))
 
-        tx_message = {
-            "object": {
-                "inputs": [{
+        tx_block2_after_genesis = {
+            "inputs": [
+                {
                     "outpoint": {
                         "index": 0,
-                        "txid": "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"
+                        "txid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
                     },
-                    "sig": "d51e82d5c121c5db21c83404aaa3f591f2099bccf731208c4b0b676308be1f994882f9d991c0ebfd8fdecc90a4aec6165fc3440ade9c83b043cba95b2bba1d0a"
-                }], "outputs": [{
-                    "pubkey": "228ee807767047682e9a556ad1ed78dff8d7edf4bc2a5f4fa02e4634cfcad7e0",
-                    "value": 49000000000000
-                }], "type": "transaction"
-            }, "type": "object"
+                    "sig": "49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b"
+                }
+            ],
+            "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50
+                }
+            ],
+            "type": "transaction"
         }
-        await client1.write_dict(tx_message)
-
-        # skip ihaveobject
-        await client1.readline()
-        await client1.readline()
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_block2_after_genesis))
 
         block_message = {
-            "object":
-                {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000",
-                    "created": 1669629465,
-                    "miner": "Kermars",
-                    "nonce": "000000000000000000000000000000000000000000000000000000000acd429d",
-                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                    "txids": [
-                        "d33ac384ea704025a6cac53f669c8e924eff7205b0cd0d6a231f0881b6265a8e",
-                        "48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb"
-                    ],
-                    "type": "block"
-                },
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624221079,
+                "miner": "Snekel testminer",
+                "nonce": "TODO",
+                "note": "Second block after genesis with CBTX and TX",
+                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                "txids": [
+                    "7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799",
+                    "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+                ],
+                "type": "block"
+            },
             "type": "object"
         }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "TODO"
+        }
         await client1.write_dict(block_message)
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
 
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn("Could not find UTXO entry for key '48c2ae2fbb4dead4bcc5801f6eaa9a350123a43750d22d05c53802b69c7cd9fb_62b7c521cd9211579cf70fd4099315643767b96711febaa5c76dc3daf27c281c_0'", response["error"])
-        
+        self.assertIn("index", response["error"])
+
         await client1.close()
 
     async def test_sendBlockTwoCoinbaseTransactions_shouldReceiveErrorMessage(self):
@@ -1019,7 +1037,7 @@ class Task3TestCase(KermaTestCase):
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn('Received block does not satisfy the proof-of-work equation', response["error"])
-        
+
         await client1.close()
 
     async def test_sendBlockCoinbaseTransactionSpentInAnotherTransactionSameBlock_shouldReceiveErrorMessage(self):
@@ -1082,13 +1100,13 @@ class Task3TestCase(KermaTestCase):
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn('Received block with coinbase transaction spend in another transaction', response["error"])
-        
+
         await client1.close()
 
     async def test_sendValidBlockGrader1_shouldReceiveIHaveObjectGrader2(self):
         # 2. On receiving an object message from Grader 1 containing a valid block, the block must
         #    be gossiped to Grader 2 by sending an ihaveobject message with the correct blockid.
-   
+
         client1 = await Client.new_established()
         client2 = await Client.new_established()
 
@@ -1217,12 +1235,11 @@ class Task3TestCase(KermaTestCase):
 
         await client.write_dict(block_message)
 
-        response = await client.read_dict();
+        response = await client.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn('Received block does not satisfy the proof-of-work equation', response['error'])
-        
-        await client.close()
 
+        await client.close()
 
     async def test_sendBlockInvalidCharLengthNote_shouldReceiveErrorMessage(self):
         # c. There is an invalid transaction in the block.
@@ -1242,10 +1259,10 @@ class Task3TestCase(KermaTestCase):
 
         await client.write_dict(block_message)
 
-        response = await client.read_dict();
+        response = await client.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn('Received block does not satisfy the proof-of-work equation', response['error'])
-        
+
         await client.close()
 
 
