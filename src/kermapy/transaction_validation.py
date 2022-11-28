@@ -13,8 +13,13 @@ from org.webpki.json.Canonicalize import canonicalize
 class InvalidTransaction(Exception):
     pass
 
+class TransactionMetadata:
+    def __init__(self, total_input_value, total_output_value):
+        self.total_input_value = total_input_value
+        self.total_output_value = total_output_value
 
-def validate_transaction(transaction: dict, objs: objects.Objects):
+
+def validate_transaction(transaction: dict, objs: objects.Objects) -> TransactionMetadata | None:
     """
     Validates a transaction and raises an error, if it is invalid
 
@@ -24,6 +29,9 @@ def validate_transaction(transaction: dict, objs: objects.Objects):
 
     Raises:
         InvalidTransaction: The error that is raised when the transaction is not valid
+
+    Returns:
+        The metadata of the transaction or None (currently for coinbase transaction)
     """
     try:
         validate(transaction, schemas.ALL_TRANSACTIONS)
@@ -33,10 +41,12 @@ def validate_transaction(transaction: dict, objs: objects.Objects):
 
     # is coinbase transaction
     if "height" in transaction:
-        pass
+        return None
     else:
         total_input_value = _validate_inputs(transaction, objs)
-        _validate_outputs(transaction, total_input_value)
+        total_output_value = _validate_outputs(transaction, total_input_value)
+        
+        return TransactionMetadata(total_input_value, total_output_value)
 
 
 def _validate_inputs(transaction: dict, objs: objects.Objects) -> int:
@@ -107,3 +117,5 @@ def _validate_outputs(transaction: dict, total_input_value: int) -> None:
     if total_input_value < total_output_value:
         raise InvalidTransaction(
             "Sum of input values is smaller than the sum of the specified output values")
+    
+    return total_input_value
