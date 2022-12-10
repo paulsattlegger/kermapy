@@ -4,7 +4,6 @@ import os
 import shutil
 import sys
 import tempfile
-import time
 import unittest
 from unittest import IsolatedAsyncioTestCase
 
@@ -365,21 +364,6 @@ class Task3TestCase(KermaTestCase):
 
         the_exception = cm.exception
         self.assertIn("proof-of-work", str(the_exception))
-
-    async def test_validate_block_timestampFuture_shouldRaiseProtocolError(self):
-        block = {
-            "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": int(time.time() + 3600),
-            "miner": "TUWien-Kerma",
-            "nonce": "0000000000000000000000000000000000000000000000000000000000000000",
-            "note": "First block. Yayy, I have 50 ker now!!",
-            "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-            "txids": ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"], "type": "block"
-        }
-        with self.assertRaises(ProtocolError) as cm:
-            await self._node.validate_block(block)
-
-        the_exception = cm.exception
-        self.assertIn("future", str(the_exception))
 
     async def test_sendBlockInvalidTransaction_shouldReceiveErrorMessage(self):
         # c. There is an invalid transaction in the block.
@@ -1263,6 +1247,108 @@ class Task3TestCase(KermaTestCase):
         self.assertIn("Failed to validate", response['error'])
 
         await client.close()
+
+
+class Task4TestCase(KermaTestCase):
+    # Grader 1 sends one of the following invalid blockchains by advertising a new block with
+    # the object message. Grader 1 must receive an error message, and Grader 2 must not
+    # receive an ihaveobject message with the corresponding blockid.
+
+    async def append_block0(self, client):
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
+                    "miner": "dionyziz", "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
+                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
+                    "previd": None, "txids": [], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client.write_dict(block_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+        }
+        self.assertDictEqual(ihaveobject_message, await client.read_dict())
+
+    async def test_sendBlockchainNonIncreasingTimestamp_shouldReceiveErrorMessage(self):
+        # b. A blockchain with non-increasing timestamps
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219078,
+                    "miner": "Kermars", "nonce": "00000000000000000000000000000000000000000000000020000000130b9ad4",
+                    "note": "non-increasing timestamp",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e", "txids": [],
+                    "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn("timestamp not later than of its parent", response['error'])
+
+        await client1.close()
+
+    async def test_sendBlockchainBlockInYear2077_shouldReceiveErrorMessage(self):
+        # c. A blockchain with a block in the year 2077
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 3376684800,
+                    "miner": "Kermars", "nonce": "000000000000000000000000000000000000000000000000c00000000977aa54",
+                    "note": "block in the year 2077",
+                    "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e", "txids": [],
+                    "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn("timestamp in the future", response['error'])
+
+        await client1.close()
+
+    async def test_sendBlockchainStopsDifferentGenesis_shouldReceiveErrorMessage(self):
+        # e. A blockchain that does not go back to the real genesis but stops at a different genesis
+        # (with valid PoW but a null previd)
+        client1 = await Client.new_established()
+
+        await self.append_block0(client1)
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1670685988,
+                    "miner": "Kermars", "nonce": "000000000000000000000000000000000000000000000000400000000fac7792",
+                    "note": "different genesis", "previd": None, "txids": [], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn("stops at a different genesis", response['error'])
+
+        await client1.close()
 
 
 if __name__ == "__main__":

@@ -207,8 +207,7 @@ BLOCK = {
             }]
         },
         "created": {
-            "type": "integer",
-            "minimum": 1624219079
+            "type": "integer"
         },
         "T": HEXIFIED_VALUE_32,
         "miner": PRINTABLE_ASCII_UP_TO_128,
