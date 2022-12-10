@@ -233,6 +233,12 @@ class Node:
         })
         await asyncio.wait_for(event.wait(), self._timeout)
 
+    async def get_object(self, object_id: str):
+        if object_id in self._objs:
+            return self._objs.get(object_id)
+        await self.resolve_object(object_id)
+        return self._objs.get(object_id)
+
     async def get_objects(self, object_ids: list[str]) -> list[dict]:
         unknown_objs = [obj_id for obj_id in object_ids if obj_id not in self._objs]
         await asyncio.gather(*[self.resolve_object(obj_id) for obj_id in unknown_objs])
@@ -244,8 +250,6 @@ class Node:
         # Ensure the target is the one required
         if block["T"] != "00000002af000000000000000000000000000000000000000000000000000000":
             raise ProtocolError("Received block with invalid target")
-        if block["created"] > time.time():
-            raise ProtocolError("Received block with timestamp in the future")
         # Check the proof-of-work
         block_id = objects.Objects.id(block)
         if int(block_id, base=16) >= int(block['T'], base=16):
@@ -258,6 +262,19 @@ class Node:
             txs = await self.get_objects(block["txids"])
         except asyncio.TimeoutError:
             raise ProtocolError("Received block contains transactions that could not be received")
+        # Request your peers for the parent block
+        if block["previd"]:
+            if block["previd"] not in self._objs:
+                await self.resolve_object(block["previd"])
+            # Check that the timestamp of each block (the created field) is later than that of its parent,...
+            if self._objs.get(block["previd"])["created"] > block["created"]:
+                raise ProtocolError("Received block with timestamp not later than of its parent")
+        else:
+            if block_id != "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e":
+                raise ProtocolError("Received block with stops at a different genesis")
+        # ... and earlier than the current time.
+        if block["created"] > time.time():
+            raise ProtocolError("Received block with timestamp in the future")
         # For each transaction in the block, check that the transaction is valid, and update UTXO set based on the
         # transaction
         not_coinbase_txs = [tx for tx in txs if "inputs" in tx]
@@ -267,7 +284,7 @@ class Node:
             fees += metadata.total_input_value - metadata.total_output_value
         # Create new utxo set and check for problems while creation
         try:
-            utxo_set = await self._utxos.create_item_async(block, self._objs, self.broadcast)
+            utxo_set = self._utxos.create_item_async(block, self._objs)
         except utxo.UtxoError as e:
             logging.warning("UTXO check was not successful")
             raise ProtocolError(

@@ -2,7 +2,6 @@ import asyncio
 import json
 import pathlib
 from collections import defaultdict
-from typing import Callable
 
 import plyvel
 
@@ -48,7 +47,6 @@ def _adjust_set_for_transaction(utxo_set: dict, tx_id: str, tx: dict, objs: obje
 
 
 class UtxoDb:
-
     def __init__(self, storage_path: str):
         adjusted_path = str(pathlib.Path(storage_path, "utxos"))
         self._db: plyvel.DB = plyvel.DB(adjusted_path, create_if_missing=True)
@@ -66,25 +64,17 @@ class UtxoDb:
         del self._events[block_id]
         self._db.put(bytes.fromhex(block_id), canonicalize(utxo))
 
-    async def create_item_async(self, block: dict, objs: objects.Objects, broadcast: Callable[[dict], None]) -> dict:
+    def create_item(self, block: dict, objs: objects.Objects) -> dict:
         prev_block_id = block["previd"]
 
-        utxo_set = dict()
-
-        if prev_block_id is not None:
-            if prev_block_id not in self:
-                try:
-                    await self._request_block_async(prev_block_id, 5, broadcast)
-                except asyncio.TimeoutError:
-                    del self._events[prev_block_id]
-                    raise UtxoError(
-                        "Failed to get previous block in time for UTXO sets")
-
+        if prev_block_id:
             try:
                 utxo_set = self.get(prev_block_id)
             except KeyError:
                 raise UtxoError(
                     f"Could not find utxo for block '{prev_block_id}' in utxo database")
+        else:
+            utxo_set = dict()
 
         tx_ids = block["txids"]
 
@@ -92,24 +82,11 @@ class UtxoDb:
             try:
                 stored_tx = objs.get(tx_id)
                 _adjust_set_for_transaction(utxo_set, tx_id, stored_tx, objs)
-            except KeyError as e:
+            except KeyError:
                 raise UtxoError(
                     f"Could not find transaction '{tx_id}' in object database")
 
         return utxo_set
-
-    async def _request_block_async(self, block_id: str, timeout: float, broadcast: Callable[[dict], None]):
-        event = self.event_for(block_id)
-        broadcast({
-            "type": "getobject",
-            "objectid": block_id
-        })
-        await asyncio.wait_for(event.wait(), timeout)
-
-    def event_for(self, block_id: str) -> asyncio.Event:
-        event = asyncio.Event()
-        self._events[block_id].add(event)
-        return event
 
     def __contains__(self, block_id: str):
         return self._db.get(bytes.fromhex(block_id)) is not None
