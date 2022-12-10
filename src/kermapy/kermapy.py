@@ -61,7 +61,6 @@ class Node:
             config.CLIENT_CONNECTIONS)
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
-        self._utxos: utxo.UtxoDb = utxo.UtxoDb(storage_path)
         self._timeout = timeout
 
     async def start_server(self):
@@ -81,7 +80,6 @@ class Node:
 
     async def shutdown(self):
         self._objs.close()
-        self._utxos.close()
         if self._server:
             self._server.close()
         for background_task in self._background_tasks:
@@ -181,9 +179,10 @@ class Node:
                 if object_id not in self._objs:
                     if obj["type"] == "transaction":
                         self.validate_transaction(obj)
+                        self._objs.put_object(obj)
                     elif obj["type"] == "block":
-                        await self.validate_block(obj)
-                    self._objs.put(obj)
+                        utxo_set = await self.validate_block(obj)
+                        self._objs.put_block(obj, utxo_set)
                     logging.info(
                         f"Saved object: {obj} with object ID: {object_id}")
                     self.broadcast({
@@ -244,7 +243,7 @@ class Node:
         await asyncio.gather(*[self.resolve_object(obj_id) for obj_id in unknown_objs])
         return [self._objs.get(obj_id) for obj_id in object_ids]
 
-    async def validate_block(self, block: dict) -> None:
+    async def validate_block(self, block: dict) -> dict:
         # Check that the block contains all required fields and that they are of the format
         validate(block, schemas.BLOCK)
         # Ensure the target is the one required
@@ -271,7 +270,7 @@ class Node:
                 raise ProtocolError("Received block with timestamp not later than of its parent")
         else:
             if block_id != "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e":
-                raise ProtocolError("Received block with stops at a different genesis")
+                raise ProtocolError("Received block which stops at a different genesis")
         # ... and earlier than the current time.
         if block["created"] > time.time():
             raise ProtocolError("Received block with timestamp in the future")
@@ -284,7 +283,7 @@ class Node:
             fees += metadata.total_input_value - metadata.total_output_value
         # Create new utxo set and check for problems while creation
         try:
-            utxo_set = self._utxos.create_item_async(block, self._objs)
+            utxo_set = utxo.create_utxo_set(block, self._objs)
         except utxo.UtxoError as e:
             logging.warning("UTXO check was not successful")
             raise ProtocolError(
@@ -315,7 +314,7 @@ class Node:
             outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
             if outputs > block_rewards + fees:
                 raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
-        self._utxos.put(block_id, utxo_set)
+        return utxo_set
 
 
 async def main():
