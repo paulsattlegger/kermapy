@@ -1,17 +1,12 @@
 import asyncio
 import json
-import os
 import shutil
-import sys
 import tempfile
 import unittest
 from unittest import IsolatedAsyncioTestCase
 
-sys.path.insert(0, os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '../src/kermapy')))
-
-from kermapy import Node, ProtocolError  # noqa
-from org.webpki.json.Canonicalize import canonicalize  # noqa
+from src.kermapy.kermapy import Node, ProtocolError
+from src.kermapy.org.webpki.json.Canonicalize import canonicalize
 
 HOST = "127.0.0.1"
 PORT = 19000

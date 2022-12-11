@@ -5,7 +5,7 @@ import pathlib
 from collections import Counter
 from typing import Iterator
 
-from config import BOOTSTRAP_NODES
+from .config import BOOTSTRAP_NODES
 
 
 class Peers:

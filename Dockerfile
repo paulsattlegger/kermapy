@@ -33,4 +33,4 @@ ENV PATH="/opt/venv/bin:$PATH"
 WORKDIR /app
 COPY src/kermapy .
 
-CMD [ "python", "/app/kermapy.py" ]
+CMD [ "python", "-m", "kermapy" ]

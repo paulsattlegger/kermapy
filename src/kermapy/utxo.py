@@ -1,4 +1,4 @@
-import objects
+from . import objects
 
 
 class UtxoError(Exception):

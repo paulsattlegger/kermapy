@@ -6,13 +6,13 @@ import time
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
-import config
-import messages
-import objects
-import peers
-import schemas
-import transaction_validation
-import utxo
+from . import config
+from . import messages
+from . import objects
+from . import peers
+from . import schemas
+from . import transaction_validation
+from . import utxo
 from org.webpki.json.Canonicalize import canonicalize
 
 
@@ -52,7 +52,7 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, storage_path: str, timeout: int = 5) -> None:
+    def __init__(self, listen_addr: str, storage_path: str, timeout: float = 5) -> None:
         self._server = None
         self._listen_addr: str = listen_addr
         self._peers: peers.Peers = peers.Peers(storage_path)
@@ -315,18 +315,3 @@ class Node:
             if outputs > block_rewards + fees:
                 raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
         return utxo_set
-
-
-async def main():
-    await node.start_server()
-    node.peer_discovery()
-    await node.serve()
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    node = Node(config.LISTEN_ADDR, config.STORAGE_PATH)
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass

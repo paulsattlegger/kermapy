@@ -40,13 +40,13 @@ sudo chown --recursive kermapy:kermapy /opt/kermapy
 
 ```ini
 [Unit]
-Description=Kerma protocol node in Python
+Description = Kerma protocol node in Python
 [Service]
-User=kermapy
-Group=kermapy
-KillSignal=SIGINT
-WorkingDirectory=/opt/kermapy/src/kermapy/
-ExecStart=/opt/kermapy/venv/bin/python3 kermapy.py
+User = kermapy
+Group = kermapy
+KillSignal = SIGINT
+WorkingDirectory = /opt/kermapy/src/
+ExecStart = /opt/kermapy/venv/bin/python3 -m kermapy
 [Install]
-WantedBy=multi-user.target
+WantedBy = multi-user.target
 ```

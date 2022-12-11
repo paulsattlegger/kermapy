@@ -5,8 +5,8 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
-import objects
-import schemas
+from . import objects
+from . import schemas
 from org.webpki.json.Canonicalize import canonicalize
 
 
