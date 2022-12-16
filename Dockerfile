@@ -31,6 +31,6 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
-COPY src/kermapy .
+COPY src/kermapy kermapy
 
 CMD [ "python", "-m", "kermapy" ]
