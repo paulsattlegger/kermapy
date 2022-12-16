@@ -64,3 +64,6 @@ class Objects:
 
     def __contains__(self, object_id: str):
         return self._db.get(b'object:' + bytes.fromhex(object_id)) is not None
+
+    def iterator(self):
+        return self._db.iterator(prefix=b'object:')

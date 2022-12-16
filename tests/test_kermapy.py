@@ -13,6 +13,7 @@ PORT = 19000
 HELLO = b'{"type":"hello","version":"0.8.0","agent":"Kermapy 0.0.x"}\n'
 GET_PEERS = b'{"type":"getpeers"}\n'
 ERROR_PARSE_JSON = b'{"error":"Failed to parse incoming message as JSON","type":"error"}\n'
+GET_CHAINTIP = b'{"type":"getchaintip"}\n'
 
 
 class Client:
@@ -34,6 +35,13 @@ class Client:
 
     async def readline(self) -> bytes:
         return await self._reader.readline()
+    
+    async def read_with_timeout(self, timeout: int) -> bytes:
+        try:
+            line = await asyncio.wait_for(self._reader.readline(), timeout)
+            return line
+        except asyncio.TimeoutError:
+            return None
 
     async def read_dict(self) -> dict:
         return json.loads(await self._reader.readline())
@@ -1268,6 +1276,38 @@ class Task4TestCase(KermaTestCase):
         }
         self.assertDictEqual(ihaveobject_message, await client.read_dict())
 
+    async def append_block1(self, client):
+        cb_block1_after_genesis = {
+            "height": 1, "outputs": [
+                {
+                    "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+        }
+        self.assertDictEqual(ihaveobject_message, await client.write_tx(cb_block1_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624220079,
+                "miner": "Snekel testminer",
+                "nonce": "000000000000000000000000000000000000000000000000000000009d8b60ea",
+                "note": "First block after genesis with CBTX",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": ["2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"], "type": "block"
+            }, "type": "object"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e"
+        }
+        await client.write_dict(block_message)
+        self.assertDictEqual(ihaveobject_message, await client.read_dict())
+
     async def test_sendBlockchainNonIncreasingTimestamp_shouldReceiveErrorMessage(self):
         # b. A blockchain with non-increasing timestamps
         client1 = await Client.new_established()
@@ -1477,6 +1517,75 @@ class Task4TestCase(KermaTestCase):
         self.assertDictEqual(ihaveobject_message, await client1.read_dict())
 
         await client1.close()
+
+    # Grader 1 sends a number of valid blockchains. When Grader 1 subsequently sends a getchaintip message, 
+    # it must receive a chaintip message with the blockid of the tip of the longest chain.
+
+    async def test_sendGetChaintipAfter5EstablishedConnections(self):
+        client1 = await Client.new_established()
+        await self.append_block0(client1)
+
+        client2 = await Client.new_established()
+        client3 = await Client.new_established()
+        client4 = await Client.new_established()
+        client5 = await Client.new_established()
+
+        self.assertIn(GET_CHAINTIP, await client1.readline())
+        self.assertIn(GET_CHAINTIP, await client2.readline())
+        self.assertIn(GET_CHAINTIP, await client3.readline())
+        self.assertIn(GET_CHAINTIP, await client4.readline())
+        self.assertIn(GET_CHAINTIP, await client5.readline())
+    
+    async def test_sendChaintipMessage(self):
+        client1 = await Client.new_established()
+        await self.append_block0(client1)
+        await client1.write(GET_CHAINTIP)
+
+        response = await client1.readline()
+
+        self.assertIn(b'chaintip',response)
+        self.assertIn(b'00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e', response)
+
+    async def test_sendGetObjectAfterReceivingNewChaintip(self):
+        client1 = await Client.new_established()
+        chaintip_message = b'{"type": "chaintip","blockid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"}\n'
+        await client1.write(chaintip_message)
+
+        response = await client1.readline()
+
+        self.assertIn(b'getobject',response)
+        self.assertIn(b'00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e', response)
+
+    async def test_doNothingAfterReceivingOldChaintip(self):
+        client1 = await Client.new_established()
+        await self.append_block0(client1)
+        chaintip_message = b'{"type": "chaintip","blockid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"}\n'
+        await client1.write(chaintip_message)
+
+        response = await client1.read_with_timeout(1)
+
+        self.assertIsNone(response)
+    
+    async def test_sendNewChaintipAfterReceivingNewBlock(self):
+        client1 = await Client.new_established()
+        await self.append_block0(client1)
+        await client1.write(GET_CHAINTIP)
+
+        response1 = await client1.readline()
+
+        self.assertIn(b'chaintip',response1)
+        self.assertIn(b'00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e', response1)
+
+
+        await self.append_block1(client1)
+        await client1.write(GET_CHAINTIP)
+
+        response2 = await client1.readline()
+
+        self.assertIn(b'chaintip',response2)
+        self.assertIn(b'0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e', response2)
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -230,6 +230,31 @@ OBJECT = {
     "required": ["type", "object"],
     "additionalProperties": False
 }
+GET_CHAINTIP = { 
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["getchaintip"]
+        },
+    },
+    "required": ["type"],
+    "additionalProperties": False
+}
+CHAINTIP = {
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["chaintip"]
+        },
+        "blockid": HEXIFIED_VALUE_32
+    },
+    "required": ["type", "blockid"],
+    "additionalProperties": False
+}
+
+
 MESSAGE = {
     "anyOf": [
         HELLO,
@@ -239,6 +264,8 @@ MESSAGE = {
         OBJECT,
         HAVE_OBJECT,
         GET_OBJECT,
+        GET_CHAINTIP,
+        CHAINTIP,
         {
             "type": "object",
             "properties": {
@@ -246,9 +273,7 @@ MESSAGE = {
                     "type": "string",
                     "enum": [
                         "getmempool",
-                        "mempool",
-                        "getchaintip",
-                        "chaintip"]
+                        "mempool",]
                 }
             },
             "required": ["type"]
