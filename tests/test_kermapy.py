@@ -408,7 +408,7 @@ class Task3TestCase(KermaTestCase):
 
         response = await client.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn('Received block contains transactions that could not be received', response['error'])
+        self.assertIn("not find transaction", response['error'])
 
         await client.close()
 
@@ -1342,6 +1342,60 @@ class Task4TestCase(KermaTestCase):
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn("stops at a different genesis", response['error'])
+
+        await client1.close()
+
+    async def test_sendBlockchainMissingParentBlock_shouldReceiveGetObjectParent(self):
+        client1 = await Client.new_established()
+
+        cb_block1_after_genesis = {
+            "height": 1, "outputs": [
+                {
+                    "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(cb_block1_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624220079,
+                "miner": "Snekel testminer",
+                "nonce": "000000000000000000000000000000000000000000000000000000009d8b60ea",
+                "note": "First block after genesis with CBTX",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": ["2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"], "type": "block"
+            }, "type": "object"
+        }
+        getobject_message = {
+            "type": "getobject",
+            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+        }
+        await client1.write_dict(block_message)
+        self.assertDictEqual(getobject_message, await client1.read_dict())
+
+        block_message = {
+            "object":
+                {
+                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
+                    "miner": "dionyziz", "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
+                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
+                    "previd": None, "txids": [], "type": "block"
+                },
+            "type": "object"
+        }
+
+        await client1.write_dict(block_message)
+
+        self.assertDictEqual({
+            'objectid': '00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e',
+            'type': 'ihaveobject'
+        }, await client1.read_dict())
 
         await client1.close()
 

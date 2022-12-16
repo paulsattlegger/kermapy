@@ -6,17 +6,15 @@ import time
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
-from . import config
-from . import messages
-from . import objects
-from . import peers
-from . import schemas
-from . import transaction_validation
-from . import utxo
 from org.webpki.json.Canonicalize import canonicalize
+from . import config, messages, objects, peers, schemas, transaction_validation, utxo
 
 
 class ProtocolError(Exception):
+    pass
+
+
+class TaskError(Exception):
     pass
 
 
@@ -44,6 +42,12 @@ class Connection:
         logging.debug(f"Sending {data!r} to {self.peer_name}")
         self._writer.write(data)
         await self._writer.drain()
+
+    async def write_error(self, error: str) -> None:
+        await self.write_message({
+            "type": "error",
+            "error": error
+        })
 
     async def read_message(self) -> dict:
         data = await self._reader.readuntil()
@@ -115,106 +119,98 @@ class Node:
                                 incoming=True) -> None:
         conn = Connection(reader, writer, incoming)
         try:
-            await conn.write_message(messages.HELLO)
-            await conn.write_message(messages.GET_PEERS)
-            # Handshake
-            message = await conn.read_message()
-            validate(message, schemas.HELLO)
-            if message["type"] != "hello":
-                raise ProtocolError(
-                    f"Received message {message} prior to 'hello'")
-            self._connections.add(conn)
-            logging.info(f"Completed handshake with {conn.peer_name}")
-            # Request-response loop
-            while True:
-                request = await conn.read_message()
-                logging.info(
-                    f"Received message {request} from {conn.peer_name}")
-                if response := await self.handle_message(request):
-                    await conn.write_message(response)
-        except (EOFError, ConnectionError) as e:
-            logging.debug(e)
-        except ValueError as e:  # JSONDecodeError, UnicodeDecodeError
-            logging.error(
-                f"Unable to parse message from {conn.peer_name}: {e}")
-            response = {
-                "type": "error",
-                "error": "Failed to parse incoming message as JSON"
-            }
-            await conn.write_message(response)
-        except ValidationError as e:
-            logging.error(
-                f"Unable to validate message from {conn.peer_name}: {e}")
-            response = {
-                "type": "error",
-                "error": f"Failed to validate incoming message: {e.message}"
-            }
-            await conn.write_message(response)
-        except ProtocolError as e:
-            logging.error(
-                f"Unable to handle message from {conn.peer_name}: {e}")
-            response = {
-                "type": "error",
-                "error": str(e)
-            }
-            await conn.write_message(response)
+            async with asyncio.TaskGroup() as tg:
+                try:
+                    await conn.write_message(messages.HELLO)
+                    await conn.write_message(messages.GET_PEERS)
+                    # Handshake
+                    message = await conn.read_message()
+                    validate(message, schemas.HELLO)
+                    if message["type"] != "hello":
+                        raise ProtocolError(
+                            f"Received message {message} prior to 'hello'")
+                    self._connections.add(conn)
+                    logging.info(f"Completed handshake with {conn.peer_name}")
+                    # Request-response loop
+                    while True:
+                        message = await conn.read_message()
+                        validate(message, schemas.MESSAGE)
+                        logging.info(f"Received message {message} from {conn.peer_name}")
+                        tg.create_task(self.handle_message(message, conn))
+                except (EOFError, ConnectionError) as e:
+                    logging.debug(e)
+                except ValueError as e:  # JSONDecodeError, UnicodeDecodeError
+                    logging.error(
+                        f"Unable to parse message from {conn.peer_name}: {e}")
+                    await conn.write_error("Failed to parse incoming message as JSON")
+                except ValidationError as e:
+                    logging.error(
+                        f"Unable to validate message from {conn.peer_name}: {e}")
+                    await conn.write_error(f"Failed to validate incoming message: {e.message}")
+        except* TaskError:
+            pass
         finally:
             await conn.close()
             self._connections.discard(conn)
 
-    async def handle_message(self, message: dict) -> dict | None:
-        validate(message, schemas.MESSAGE)
-        match message["type"]:
-            case "getpeers":
-                return {
-                    "type": "peers",
-                    "peers": [peer for peer in self._peers]
-                }
-            case "peers":
-                self._peers.add_all(message["peers"])
-                self._peers.dump()
-            case "object":
-                obj = message["object"]
-                object_id = objects.Objects.id(obj)
-                if object_id not in self._objs:
-                    if obj["type"] == "transaction":
-                        self.validate_transaction(obj)
-                        self._objs.put_object(obj)
-                    elif obj["type"] == "block":
-                        utxo_set = await self.validate_block(obj)
-                        self._objs.put_block(obj, utxo_set)
-                    logging.info(
-                        f"Saved object: {obj} with object ID: {object_id}")
-                    self.broadcast({
-                        "type": "ihaveobject",
-                        "objectid": object_id
+    async def handle_message(self, message: dict, conn: Connection):
+        try:
+            match message["type"]:
+                case "getpeers":
+                    await conn.write_message({
+                        "type": "peers",
+                        "peers": [peer for peer in self._peers]
                     })
-                else:
-                    logging.info(
-                        f"Object: {obj} ignored, already in the database")
-            case "ihaveobject":
-                object_id = message["objectid"]
-                if object_id in self._objs:
-                    logging.info(
-                        f"Object with object ID: {object_id} is already in the database")
-                else:
-                    return {
-                        "type": "getobject",
-                        "objectid": object_id
-                    }
-            case "getobject":
-                object_id = message["objectid"]
-                if object_id in self._objs:
-                    return {
-                        "type": "object",
-                        "object": self._objs.get(object_id)
-                    }
-                else:
-                    logging.info(
-                        f"Object with object ID: {object_id} is not in the database")
-            case "hello":
-                raise ProtocolError(
-                    "Received a second 'hello' message, even though handshake is completed")
+                case "peers":
+                    self._peers.add_all(message["peers"])
+                    self._peers.dump()
+                case "object":
+                    obj = message["object"]
+                    object_id = objects.Objects.id(obj)
+                    if object_id not in self._objs:
+                        if obj["type"] == "transaction":
+                            self.validate_transaction(obj)
+                            self._objs.put_object(obj)
+                        elif obj["type"] == "block":
+                            utxo_set = await self.validate_block(obj)
+                            self._objs.put_block(obj, utxo_set)
+                        logging.info(
+                            f"Saved object: {obj} with object ID: {object_id}")
+                        self.broadcast({
+                            "type": "ihaveobject",
+                            "objectid": object_id
+                        })
+                    else:
+                        logging.info(
+                            f"Object: {obj} ignored, already in the database")
+                case "ihaveobject":
+                    object_id = message["objectid"]
+                    if object_id in self._objs:
+                        logging.info(
+                            f"Object with object ID: {object_id} is already in the database")
+                    else:
+                        await conn.write_message({
+                            "type": "getobject",
+                            "objectid": object_id
+                        })
+                case "getobject":
+                    object_id = message["objectid"]
+                    if object_id in self._objs:
+                        await conn.write_message({
+                            "type": "object",
+                            "object": self._objs.get(object_id)
+                        })
+                    else:
+                        logging.info(
+                            f"Object with object ID: {object_id} is not in the database")
+                case "hello":
+                    raise ProtocolError(
+                        "Received a second 'hello' message, even though handshake is completed")
+        except ProtocolError as e:
+            logging.error(
+                f"Unable to handle message from {conn.peer_name}: {e}")
+            await conn.write_error(str(e))
+            raise TaskError
 
     def validate_transaction(self, transaction: dict) -> transaction_validation.TransactionMetadata:
         try:
@@ -244,8 +240,6 @@ class Node:
         return [self._objs.get(obj_id) for obj_id in object_ids]
 
     async def validate_block(self, block: dict) -> dict:
-        # Check that the block contains all required fields and that they are of the format
-        validate(block, schemas.BLOCK)
         # Ensure the target is the one required
         if block["T"] != "00000002af000000000000000000000000000000000000000000000000000000":
             raise ProtocolError("Received block with invalid target")
@@ -264,7 +258,10 @@ class Node:
         # Request your peers for the parent block
         if block["previd"]:
             if block["previd"] not in self._objs:
-                await self.resolve_object(block["previd"])
+                try:
+                    await self.resolve_object(block["previd"])
+                except asyncio.TimeoutError:
+                    raise ProtocolError("Received block which parent(-s) could not be received")
             # Check that the timestamp of each block (the created field) is later than that of its parent,...
             if self._objs.get(block["previd"])["created"] > block["created"]:
                 raise ProtocolError("Received block with timestamp not later than of its parent")
