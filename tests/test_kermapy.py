@@ -1379,6 +1379,75 @@ class Task4TestCase(KermaTestCase):
         await client1.write_dict(block_message)
         self.assertDictEqual(getobject_message, await client1.read_dict())
 
+        await self.append_block0(client1)
+
+        await client1.close()
+
+    async def test_sendBlockchainMissingParentsBlock_shouldReceiveGetObjectParentsRecursively(self):
+        client1 = await Client.new_established()
+
+        tx_block2_after_genesis = {
+            "height": 2, "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_block2_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624221079,
+                "miner": "Snekel testminer",
+                "nonce": "000000000000000000000000000000000000000000000000000000004d82fc68",
+                "note": "Second block after genesis with CBTX",
+                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                "txids": ["73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"], "type": "block"
+            }, "type": "object"
+        }
+        getobject_message = {
+            "type": "getobject",
+            "objectid": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e"
+        }
+        await client1.write_dict(block_message)
+        self.assertDictEqual(getobject_message, await client1.read_dict())
+
+        cb_block1_after_genesis = {
+            "height": 1, "outputs": [
+                {
+                    "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(cb_block1_after_genesis))
+
+        block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624220079,
+                "miner": "Snekel testminer",
+                "nonce": "000000000000000000000000000000000000000000000000000000009d8b60ea",
+                "note": "First block after genesis with CBTX",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": ["2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"], "type": "block"
+            }, "type": "object"
+        }
+        getobject_message = {
+            "type": "getobject",
+            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+        }
+        await client1.write_dict(block_message)
+        self.assertDictEqual(getobject_message, await client1.read_dict())
+
         block_message = {
             "object":
                 {
@@ -1391,14 +1460,23 @@ class Task4TestCase(KermaTestCase):
         }
 
         await client1.write_dict(block_message)
-
-        self.assertDictEqual({
-            'objectid': '00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e',
-            'type': 'ihaveobject'
-        }, await client1.read_dict())
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "00000002a8986627f379547ed1ec990841e1f1c6ba616a56bfcd4b410280dc6d"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
 
         await client1.close()
-
 
 if __name__ == "__main__":
     unittest.main()
