@@ -127,8 +127,8 @@ class Node:
                     message = await conn.read_message()
                     validate(message, schemas.HELLO)
                     if message["type"] != "hello":
-                        raise ProtocolError(
-                            f"Received message {message} prior to 'hello'")
+                        await conn.write_error(f"Received message {message} prior to 'hello'")
+                        return
                     self._connections.add(conn)
                     logging.info(f"Completed handshake with {conn.peer_name}")
                     # Request-response loop
