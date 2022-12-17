@@ -12,6 +12,10 @@ from org.webpki.json.Canonicalize import canonicalize
 class Objects:
     def __init__(self, storage_path: str):
         self._db: plyvel.DB = plyvel.DB(storage_path, create_if_missing=True)
+        self._objects: plyvel.PrefixedDB = self._db.prefixed_db(b'object:')
+        self._heights: plyvel.PrefixedDB = self._db.prefixed_db(b'height:')
+        self._utxos: plyvel.PrefixedDB = self._db.prefixed_db(b'utxo:')
+        self._chaintip: plyvel.PrefixedDB = self._db.prefixed_db(b'chaintip')
         self._events: dict[str, WeakSet[asyncio.Event]] = defaultdict(WeakSet)
 
     def close(self):
@@ -22,27 +26,27 @@ class Objects:
         canonical_object = canonicalize(obj)
         return hashlib.sha256(canonical_object).hexdigest()
 
-    def _get(self, namespace: bytes, object_id: str) -> bytes:
-        value = self._db.get(namespace + bytes.fromhex(object_id))
+    def height(self, object_id: str) -> int:
+        value = self._heights.get(bytes.fromhex(object_id))
         if not value:
             raise KeyError(object_id)
-        return value
-
-    def height(self, object_id: str) -> int:
-        value = self._get(b'height:', object_id)
         return int.from_bytes(value, 'big', signed=False)
 
     def utxo(self, object_id: str) -> dict:
-        value = self._get(b'utxo:', object_id)
+        value = self._utxos.get(bytes.fromhex(object_id))
+        if not value:
+            raise KeyError(object_id)
         return json.loads(value)
 
     def chaintip(self) -> str:
-        value = self._db.get(b'chaintip:')
+        value = self._chaintip.get(b'')
         if value:
             return value.hex()
 
     def get(self, object_id: str) -> dict:
-        value = self._get(b'object:', object_id)
+        value = self._objects.get(bytes.fromhex(object_id))
+        if not value:
+            raise KeyError(object_id)
         return json.loads(value)
 
     def put_object(self, obj: dict) -> None:
@@ -50,7 +54,7 @@ class Objects:
         for event in self._events[object_id]:
             event.set()
         del self._events[object_id]
-        self._db.put(b'object:' + bytes.fromhex(object_id), canonicalize(obj))
+        self._objects.put(bytes.fromhex(object_id), canonicalize(obj))
 
     def put_block(self, obj: dict, utxo_set: dict):
         object_id = self.id(obj)
@@ -59,9 +63,9 @@ class Objects:
         else:
             height = 0
         if not self.chaintip() or self.height(self.chaintip()) < height:
-            self._db.put(b'chaintip:', bytes.fromhex(object_id))
-        self._db.put(b'height:' + bytes.fromhex(object_id), int.to_bytes(height, 256, 'big', signed=False))
-        self._db.put(b'utxo:' + bytes.fromhex(object_id), canonicalize(utxo_set))
+            self._chaintip.put(b'', bytes.fromhex(object_id))
+        self._heights.put(bytes.fromhex(object_id), int.to_bytes(height, 256, 'big', signed=False))
+        self._utxos.put(bytes.fromhex(object_id), canonicalize(utxo_set))
         self.put_object(obj)
 
     def event_for(self, object_id: str) -> asyncio.Event:
@@ -70,7 +74,4 @@ class Objects:
         return event
 
     def __contains__(self, object_id: str):
-        return self._db.get(b'object:' + bytes.fromhex(object_id)) is not None
-
-    def iterator(self):
-        return self._db.iterator(prefix=b'object:')
+        return self._objects.get(bytes.fromhex(object_id)) is not None
