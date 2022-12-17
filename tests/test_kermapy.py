@@ -31,15 +31,15 @@ class Client:
         await client.readline()
         await client.write(HELLO)
         await client.readline()
+        await client.readline()
         return client
 
     async def readline(self) -> bytes:
         return await self._reader.readline()
-    
-    async def read_with_timeout(self, timeout: int) -> bytes:
+
+    async def read_with_timeout(self, timeout: int) -> bytes | None:
         try:
-            line = await asyncio.wait_for(self._reader.readline(), timeout)
-            return line
+            return await asyncio.wait_for(self._reader.readline(), timeout)
         except asyncio.TimeoutError:
             return None
 
@@ -138,6 +138,7 @@ class Task1TestCase(KermaTestCase):
     async def test_getErrorNoHelloMsg(self):
         # If Grader sends any message before sending hello, your node should send an error message and then disconnect.
         client = await Client.new()
+        await client.readline()
         await client.readline()
         await client.readline()
         await client.write(GET_PEERS)
@@ -317,6 +318,7 @@ class Task2TestCase(KermaTestCase):
     async def test_objectSentAndHandshakeNotCompleted_shouldNotReceiveIHaveObject(self):
         client = await Client.new_established()
         client2 = await Client.new()
+        await client2.readline()
         await client2.readline()
         await client2.readline()
 
@@ -1518,73 +1520,86 @@ class Task4TestCase(KermaTestCase):
 
         await client1.close()
 
-    # Grader 1 sends a number of valid blockchains. When Grader 1 subsequently sends a getchaintip message, 
-    # it must receive a chaintip message with the blockid of the tip of the longest chain.
-
-    async def test_sendGetChaintipAfter5EstablishedConnections(self):
+    async def test_sendGetChaintipOnEstablishedConnections(self):
         client1 = await Client.new_established()
         await self.append_block0(client1)
+        await client1.close()
 
-        client2 = await Client.new_established()
-        client3 = await Client.new_established()
-        client4 = await Client.new_established()
-        client5 = await Client.new_established()
+        client2 = await Client.new()
+        client3 = await Client.new()
 
-        self.assertIn(GET_CHAINTIP, await client1.readline())
-        self.assertIn(GET_CHAINTIP, await client2.readline())
-        self.assertIn(GET_CHAINTIP, await client3.readline())
-        self.assertIn(GET_CHAINTIP, await client4.readline())
-        self.assertIn(GET_CHAINTIP, await client5.readline())
-    
+        await client2.readline()
+        await client3.readline()
+        await client2.readline()
+        await client3.readline()
+
+        self.assertEqual(GET_CHAINTIP, await client2.readline())
+        self.assertEqual(GET_CHAINTIP, await client3.readline())
+
+        await client2.close()
+        await client3.close()
+
     async def test_sendChaintipMessage(self):
         client1 = await Client.new_established()
         await self.append_block0(client1)
         await client1.write(GET_CHAINTIP)
 
-        response = await client1.readline()
+        response = await client1.read_dict()
 
-        self.assertIn(b'chaintip',response)
-        self.assertIn(b'00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e', response)
+        self.assertEqual("chaintip", response["type"])
+        self.assertEqual("00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e", response["blockid"])
+
+        await client1.close()
 
     async def test_sendGetObjectAfterReceivingNewChaintip(self):
         client1 = await Client.new_established()
-        chaintip_message = b'{"type": "chaintip","blockid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"}\n'
-        await client1.write(chaintip_message)
+        chaintip_message = {
+            "type": "chaintip", "blockid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+        }
+        await client1.write_dict(chaintip_message)
 
-        response = await client1.readline()
+        response = await client1.read_dict()
 
-        self.assertIn(b'getobject',response)
-        self.assertIn(b'00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e', response)
+        self.assertEqual("getobject", response["type"])
+        self.assertEqual("00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e", response["objectid"])
+
+        await client1.close()
 
     async def test_doNothingAfterReceivingOldChaintip(self):
         client1 = await Client.new_established()
         await self.append_block0(client1)
-        chaintip_message = b'{"type": "chaintip","blockid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"}\n'
-        await client1.write(chaintip_message)
 
-        response = await client1.read_with_timeout(1)
+        chaintip_message = {
+            "type": "chaintip", "blockid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+        }
+        await client1.write_dict(chaintip_message)
 
-        self.assertIsNone(response)
-    
+        with self.assertRaises(asyncio.TimeoutError):
+            await asyncio.wait_for(client1.readline(), 0.5)
+
+        await client1.close()
+
     async def test_sendNewChaintipAfterReceivingNewBlock(self):
+        # Grader 1 sends a number of valid blockchains. When Grader 1 subsequently sends a getchaintip message,
+        # it must receive a chaintip message with the blockid of the tip of the longest chain.
         client1 = await Client.new_established()
         await self.append_block0(client1)
         await client1.write(GET_CHAINTIP)
 
-        response1 = await client1.readline()
+        response1 = await client1.read_dict()
 
-        self.assertIn(b'chaintip',response1)
-        self.assertIn(b'00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e', response1)
-
+        self.assertEqual("chaintip", response1["type"])
+        self.assertEqual("00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e", response1["blockid"])
 
         await self.append_block1(client1)
         await client1.write(GET_CHAINTIP)
 
-        response2 = await client1.readline()
+        response2 = await client1.read_dict()
 
-        self.assertIn(b'chaintip',response2)
-        self.assertIn(b'0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e', response2)
+        self.assertEqual("chaintip", response2["type"])
+        self.assertEqual("0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e", response2["blockid"])
 
+        await client1.close()
 
 
 if __name__ == "__main__":

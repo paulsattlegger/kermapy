@@ -36,6 +36,11 @@ class Objects:
         value = self._get(b'utxo:', object_id)
         return json.loads(value)
 
+    def chaintip(self) -> str:
+        value = self._db.get(b'chaintip:')
+        if value:
+            return value.hex()
+
     def get(self, object_id: str) -> dict:
         value = self._get(b'object:', object_id)
         return json.loads(value)
@@ -53,6 +58,8 @@ class Objects:
             height = self.height(obj["previd"]) + 1
         else:
             height = 0
+        if not self.chaintip() or self.height(self.chaintip()) < height:
+            self._db.put(b'chaintip:', bytes.fromhex(object_id))
         self._db.put(b'height:' + bytes.fromhex(object_id), int.to_bytes(height, 256, 'big', signed=False))
         self._db.put(b'utxo:' + bytes.fromhex(object_id), canonicalize(utxo_set))
         self.put_object(obj)

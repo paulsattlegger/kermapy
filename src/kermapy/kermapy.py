@@ -66,9 +66,7 @@ class Node:
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
         self._timeout = timeout
-        self._isInSync = False
-        self._latest_block: tuple(str, int) = ('', 0)
-        self.set_current_chaintip()
+
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -126,6 +124,7 @@ class Node:
                 try:
                     await conn.write_message(messages.HELLO)
                     await conn.write_message(messages.GET_PEERS)
+                    await conn.write_message(messages.GET_CHAINTIP)
                     # Handshake
                     message = await conn.read_message()
                     validate(message, schemas.HELLO)
@@ -134,11 +133,6 @@ class Node:
                         return
                     self._connections.add(conn)
                     logging.info(f"Completed handshake with {conn.peer_name}")
-                    # Sync longest chaintip
-                    if len(self._connections) > config.CLIENT_CONNECTIONS/2 and self._isInSync == False:
-                        logging.info("Sync longest chain. Broadcast get_chaintip to all connected nodes.")
-                        self.broadcast(messages.GET_CHAINTIP)
-                        self._isInSync = True
                     # Request-response loop
                     while True:
                         message = await conn.read_message()
@@ -211,17 +205,20 @@ class Node:
                     else:
                         logging.info(
                             f"Object with object ID: {object_id} is not in the database")
-                case "getchaintip":   
-                    block_id = self._latest_block[0]
-                    await conn.write_message({
-                        "type": "chaintip",
-                         "blockid": block_id
-                    }) 
+                case "getchaintip":
+                    block_id = self._objs.chaintip()
+                    if block_id:
+                        await conn.write_message({
+                            "type": "chaintip",
+                            "blockid": block_id
+                        })
+                    else:
+                        raise ProtocolError("Received a 'getchaintip' message, even though no blocks have been stored yet")
                 case "chaintip":
                     block_id = message["blockid"]
                     if block_id in self._objs:
                         logging.info(
-                        f"Chaintip block with ID: {block_id} is already in the database")
+                            f"Chaintip block with ID: {block_id} is already in the database")
                     else:
                         await conn.write_message({
                             "type": "getobject",
@@ -334,15 +331,4 @@ class Node:
             outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
             if outputs > config.BLOCK_REWARD + fees:
                 raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
-        if (self._latest_block[1] < block["created"]):
-            self._latest_block = (block_id, block["created"])
         return utxo_set
-
-    def set_current_chaintip(self) -> None:
-        objects_iterator = self._objs.iterator()
-        for _, value in objects_iterator:
-            value_object = json.loads(value.decode("utf-8"))
-            if (value_object['type']== 'block' and self._latest_block[1] < value_object["created"]):
-                self._latest_block = (self._objs.id(value_object), value_object["created"])
-        objects_iterator.close()
-        logging.info(f"Current Chaintip Block id: {self._latest_block[0]}")
