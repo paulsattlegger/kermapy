@@ -265,7 +265,7 @@ class Node:
 
     async def validate_block(self, block: dict) -> dict:
         # Ensure the target is the one required
-        if block["T"] != "00000002af000000000000000000000000000000000000000000000000000000":
+        if block["T"] != config.TARGET:
             raise ProtocolError("Received block with invalid target")
         # Check the proof-of-work
         block_id = objects.Objects.id(block)
@@ -290,7 +290,7 @@ class Node:
             if self._objs.get(block["previd"])["created"] > block["created"]:
                 raise ProtocolError("Received block with timestamp not later than of its parent")
         else:
-            if block_id != "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e":
+            if block_id != config.GENESIS:
                 raise ProtocolError("Received block which stops at a different genesis")
         # ... and earlier than the current time.
         if block["created"] > time.time():
@@ -331,9 +331,8 @@ class Node:
             if coinbase_txs[0]["height"] != self._objs.height(block["previd"]) + 1:
                 raise ProtocolError("Received block with coinbase transaction height does not match block height")
             # Check the coinbase transaction has no outputs that exceed the block rewards and the fees.
-            block_rewards = 50 * (10 ** 12)
             outputs = sum(output["value"] for output in coinbase_txs[0]["outputs"])
-            if outputs > block_rewards + fees:
+            if outputs > config.BLOCK_REWARD + fees:
                 raise ProtocolError("Received block with coinbase transaction that exceed block rewards and the fees")
         if (self._latest_block[1] < block["created"]):
             self._latest_block = (block_id, block["created"])
