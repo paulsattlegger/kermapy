@@ -48,6 +48,6 @@ class Peers:
             with self._path.open() as fp:
                 peers = json.load(fp)
         else:
-            peers = BOOTSTRAP_NODES
+            peers = {n: "" for n in BOOTSTRAP_NODES}
         self._dict = peers
         self._cntr = Counter([peer.rsplit(":", 1)[0] for peer in peers])
