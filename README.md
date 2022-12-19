@@ -14,7 +14,7 @@ Via `docker-compose.yml` (requires Github access token)
 version: "3"
 services:
   chain-node:
-    image: ghcr.io/paulsattlegger/kermapy:v1.2.0
+    image: ghcr.io/paulsattlegger/kermapy:latest
     environment:
       BOOTSTRAP_NODES: "128.130.122.101:18018"
       LISTEN_ADDR: "0.0.0.0:18018"
