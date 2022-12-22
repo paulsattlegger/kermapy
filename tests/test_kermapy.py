@@ -1602,5 +1602,62 @@ class Task4TestCase(KermaTestCase):
         await client1.close()
 
 
+    async def test_secondChainBecomesMainChain_shouldChangeChaintip(self):
+        client1 = await Client.new_established()
+        await self.append_block0(client1)
+        await self.append_block1(client1)
+
+        await client1.write(GET_CHAINTIP)
+
+        response1 = await client1.read_dict()
+
+        self.assertEqual("chaintip", response1["type"])
+        self.assertEqual("0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e", response1["blockid"])
+
+        second_chain_first_block_message = {
+            "object": {
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1624219100,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000005000000028d1f901",
+                "note":"First block of second chain","previd":"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids":[],"type":"block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_first_block_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e"
+        }
+
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+
+        second_chain_second_block_message = {
+            "object": {
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1624219200,"miner":"SneakyDude","nonce":"000000000000000000000000000000000000000000000000b000000007047bb1",
+                "note":"Second block of second chain","previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
+                "txids":[],"type":"block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_second_block_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "000000024297ac6fe162c32dd1f43d2352adec27c1f36ccdd6e7cf0c8b5ed40b"
+        }
+
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+
+        await client1.write(GET_CHAINTIP)
+
+        response1 = await client1.read_dict()
+
+        self.assertEqual("chaintip", response1["type"])
+        self.assertEqual("000000024297ac6fe162c32dd1f43d2352adec27c1f36ccdd6e7cf0c8b5ed40b", response1["blockid"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
