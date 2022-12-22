@@ -8,8 +8,6 @@ from unittest import IsolatedAsyncioTestCase
 from src.kermapy.kermapy import Node, ProtocolError
 from src.kermapy.org.webpki.json.Canonicalize import canonicalize
 
-from src.kermapy.objects import Objects
-
 HOST = "127.0.0.1"
 PORT = 19000
 HELLO = b'{"type":"hello","version":"0.8.0","agent":"Kermapy 0.0.x"}\n'
