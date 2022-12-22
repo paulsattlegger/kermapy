@@ -8,6 +8,8 @@ from unittest import IsolatedAsyncioTestCase
 from src.kermapy.kermapy import Node, ProtocolError
 from src.kermapy.org.webpki.json.Canonicalize import canonicalize
 
+from src.kermapy.objects import Objects
+
 HOST = "127.0.0.1"
 PORT = 19000
 HELLO = b'{"type":"hello","version":"0.8.0","agent":"Kermapy 0.0.x"}\n'
@@ -1602,7 +1604,7 @@ class Task4TestCase(KermaTestCase):
         await client1.close()
 
 
-    async def test_secondChainBecomesMainChain_shouldChangeChaintip(self):
+    async def test_forkedChain_becomesMainChain_shouldChangeChaintip(self):
         client1 = await Client.new_established()
         await self.append_block0(client1)
         await self.append_block1(client1)
@@ -1656,6 +1658,172 @@ class Task4TestCase(KermaTestCase):
 
         self.assertEqual("chaintip", response1["type"])
         self.assertEqual("000000024297ac6fe162c32dd1f43d2352adec27c1f36ccdd6e7cf0c8b5ed40b", response1["blockid"])
+
+    async def test_forkedChain_proofOfWorkInvalid_shouldRaiseProtocolError(self):
+        client1 = await Client.new_established()
+        await self.append_block0(client1)
+        await self.append_block1(client1)
+
+        await client1.write(GET_CHAINTIP)
+
+        response1 = await client1.read_dict()
+
+        self.assertEqual("chaintip", response1["type"])
+        self.assertEqual("0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e", response1["blockid"])
+
+        second_chain_first_block_message = {
+            "object": {
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1624219100,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000005000000028d1f901",
+                "note":"First block of second chain","previd":"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids":[],"type":"block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_first_block_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e"
+        }
+
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+
+        second_chain_second_block_message = {
+            "object": {
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1624219200,"miner":"SneakyDude","nonce":"ab0000000000000000000000000000000000000000000000b000000007047bb1",
+                "note":"Second block of second chain","previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
+                "txids":[],"type":"block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_second_block_message)
+        
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn("proof-of-work", response['error'])
+
+        await client1.close()
+    
+    async def test_forkedChain_blockUnavailable_shouldRaiseProtocolError(self):
+        client1 = await Client.new_established()
+        await self.append_block0(client1)
+        await self.append_block1(client1)
+
+        await client1.write(GET_CHAINTIP)
+
+        response1 = await client1.read_dict()
+
+        self.assertEqual("chaintip", response1["type"])
+        self.assertEqual("0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e", response1["blockid"])
+
+        second_chain_first_block_message = {
+            "object": {
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1624219100,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000005000000028d1f901",
+                "note":"First block of second chain","previd":"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids":[],"type":"block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_first_block_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e"
+        }
+
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+
+        second_chain_second_block_message = {
+            "object": {
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1624219200,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000001000000001ece041",
+                "note":"Second block of second chain","previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83a",
+                "txids":[],"type":"block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_second_block_message)
+        
+        # Read request of object (block)
+        await client1.read_dict()
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn("parent(-s) could not be received", response['error'])
+
+        await client1.close()
+
+    async def test_forkedChain_coinbaseTxWrongHeight_shouldRaiseProtocolError(self):
+        client1 = await Client.new_established()
+        await self.append_block0(client1)
+        await self.append_block1(client1)
+
+        await client1.write(GET_CHAINTIP)
+
+        response1 = await client1.read_dict()
+
+        self.assertEqual("chaintip", response1["type"])
+        self.assertEqual("0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e", response1["blockid"])
+
+        second_chain_first_block_message = {
+            "object": {
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1624219100,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000005000000028d1f901",
+                "note":"First block of second chain","previd":"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids":[],"type":"block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_first_block_message)
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e"
+        }
+
+        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
+
+        tx_cb_message = {
+            "height": 100, "outputs": [
+                {
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "f541463a09a32a1a72e347779d739d5c5969b2f94b38c647d0038cbc4dfac10d"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_cb_message))
+
+        second_chain_second_block_message = {
+             "object": {
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1624219200,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000004000000003054557",
+                "note":"Second block of second chain","previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
+                "txids":["f541463a09a32a1a72e347779d739d5c5969b2f94b38c647d0038cbc4dfac10d"],"type":"block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_second_block_message)
+        
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn("height does not match block height", response['error'])
+
+        await client1.close()
+
+    
+
+
+    
 
 
 
