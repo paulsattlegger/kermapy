@@ -143,7 +143,9 @@ class Task1TestCase(KermaTestCase):
         await client.readline()
         await client.write(GET_PEERS)
         response = await client.readline()
-        self.assertIn(b'{"error":"Failed to validate incoming message: \'version\' is a required property","type":"error"}\n', response)
+        self.assertIn(
+            b'{"error":"Failed to validate incoming message: \'version\' is a required property","type":"error"}\n',
+            response)
         await client.close()
 
     async def test_getErrorWrongPattern1(self):
@@ -630,8 +632,9 @@ class Task3TestCase(KermaTestCase):
 
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn("Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'",
-                      response['error'])
+        self.assertIn(
+            "Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'",
+            response['error'])
 
         await client1.close()
 
@@ -679,8 +682,9 @@ class Task3TestCase(KermaTestCase):
 
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
-        self.assertIn("Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'",
-                      response['error'])
+        self.assertIn(
+            "Could not find UTXO entry for key '2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df_f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60_0'",
+            response['error'])
 
         await client1.close()
 
@@ -1601,7 +1605,6 @@ class Task4TestCase(KermaTestCase):
 
         await client1.close()
 
-
     async def test_forkedChain_becomesMainChain_shouldChangeChaintip(self):
         client1 = await Client.new_established()
         await self.append_block0(client1)
@@ -1616,10 +1619,12 @@ class Task4TestCase(KermaTestCase):
 
         second_chain_first_block_message = {
             "object": {
-                "T":"00000002af000000000000000000000000000000000000000000000000000000",
-                "created":1624219100,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000005000000028d1f901",
-                "note":"First block of second chain","previd":"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                "txids":[],"type":"block"
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624219100, "miner": "SneakyDude",
+                "nonce": "0000000000000000000000000000000000000000000000005000000028d1f901",
+                "note": "First block of second chain",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": [], "type": "block"
             },
             "type": "object"
         }
@@ -1634,10 +1639,12 @@ class Task4TestCase(KermaTestCase):
 
         second_chain_second_block_message = {
             "object": {
-                "T":"00000002af000000000000000000000000000000000000000000000000000000",
-                "created":1624219200,"miner":"SneakyDude","nonce":"000000000000000000000000000000000000000000000000b000000007047bb1",
-                "note":"Second block of second chain","previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
-                "txids":[],"type":"block"
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624219200, "miner": "SneakyDude",
+                "nonce": "000000000000000000000000000000000000000000000000b000000007047bb1",
+                "note": "Second block of second chain",
+                "previd": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
+                "txids": [], "type": "block"
             },
             "type": "object"
         }
@@ -1657,6 +1664,8 @@ class Task4TestCase(KermaTestCase):
         self.assertEqual("chaintip", response1["type"])
         self.assertEqual("000000024297ac6fe162c32dd1f43d2352adec27c1f36ccdd6e7cf0c8b5ed40b", response1["blockid"])
 
+        await client1.close()
+
     async def test_forkedChain_proofOfWorkInvalid_shouldRaiseProtocolError(self):
         client1 = await Client.new_established()
         await self.append_block0(client1)
@@ -1671,10 +1680,12 @@ class Task4TestCase(KermaTestCase):
 
         second_chain_first_block_message = {
             "object": {
-                "T":"00000002af000000000000000000000000000000000000000000000000000000",
-                "created":1624219100,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000005000000028d1f901",
-                "note":"First block of second chain","previd":"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                "txids":[],"type":"block"
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624219100, "miner": "SneakyDude",
+                "nonce": "0000000000000000000000000000000000000000000000005000000028d1f901",
+                "note": "First block of second chain",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": [], "type": "block"
             },
             "type": "object"
         }
@@ -1689,22 +1700,24 @@ class Task4TestCase(KermaTestCase):
 
         second_chain_second_block_message = {
             "object": {
-                "T":"00000002af000000000000000000000000000000000000000000000000000000",
-                "created":1624219200,"miner":"SneakyDude","nonce":"ab0000000000000000000000000000000000000000000000b000000007047bb1",
-                "note":"Second block of second chain","previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
-                "txids":[],"type":"block"
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624219200, "miner": "SneakyDude",
+                "nonce": "ab0000000000000000000000000000000000000000000000b000000007047bb1",
+                "note": "Second block of second chain",
+                "previd": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
+                "txids": [], "type": "block"
             },
             "type": "object"
         }
 
         await client1.write_dict(second_chain_second_block_message)
-        
+
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn("proof-of-work", response['error'])
 
         await client1.close()
-    
+
     async def test_forkedChain_blockUnavailable_shouldRaiseProtocolError(self):
         client1 = await Client.new_established()
         await self.append_block0(client1)
@@ -1719,10 +1732,12 @@ class Task4TestCase(KermaTestCase):
 
         second_chain_first_block_message = {
             "object": {
-                "T":"00000002af000000000000000000000000000000000000000000000000000000",
-                "created":1624219100,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000005000000028d1f901",
-                "note":"First block of second chain","previd":"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                "txids":[],"type":"block"
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624219100, "miner": "SneakyDude",
+                "nonce": "0000000000000000000000000000000000000000000000005000000028d1f901",
+                "note": "First block of second chain",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": [], "type": "block"
             },
             "type": "object"
         }
@@ -1737,16 +1752,18 @@ class Task4TestCase(KermaTestCase):
 
         second_chain_second_block_message = {
             "object": {
-                "T":"00000002af000000000000000000000000000000000000000000000000000000",
-                "created":1624219200,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000001000000001ece041",
-                "note":"Second block of second chain","previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83a",
-                "txids":[],"type":"block"
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624219200, "miner": "SneakyDude",
+                "nonce": "0000000000000000000000000000000000000000000000001000000001ece041",
+                "note": "Second block of second chain",
+                "previd": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83a",
+                "txids": [], "type": "block"
             },
             "type": "object"
         }
 
         await client1.write_dict(second_chain_second_block_message)
-        
+
         # Read request of object (block)
         await client1.read_dict()
         response = await client1.read_dict()
@@ -1769,10 +1786,12 @@ class Task4TestCase(KermaTestCase):
 
         second_chain_first_block_message = {
             "object": {
-                "T":"00000002af000000000000000000000000000000000000000000000000000000",
-                "created":1624219100,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000005000000028d1f901",
-                "note":"First block of second chain","previd":"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                "txids":[],"type":"block"
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624219100, "miner": "SneakyDude",
+                "nonce": "0000000000000000000000000000000000000000000000005000000028d1f901",
+                "note": "First block of second chain",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": [], "type": "block"
             },
             "type": "object"
         }
@@ -1801,28 +1820,24 @@ class Task4TestCase(KermaTestCase):
         self.assertDictEqual(ihaveobject_message, await client1.write_tx(tx_cb_message))
 
         second_chain_second_block_message = {
-             "object": {
-                "T":"00000002af000000000000000000000000000000000000000000000000000000",
-                "created":1624219200,"miner":"SneakyDude","nonce":"0000000000000000000000000000000000000000000000004000000003054557",
-                "note":"Second block of second chain","previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
-                "txids":["f541463a09a32a1a72e347779d739d5c5969b2f94b38c647d0038cbc4dfac10d"],"type":"block"
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1624219200, "miner": "SneakyDude",
+                "nonce": "0000000000000000000000000000000000000000000000004000000003054557",
+                "note": "Second block of second chain",
+                "previd": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
+                "txids": ["f541463a09a32a1a72e347779d739d5c5969b2f94b38c647d0038cbc4dfac10d"], "type": "block"
             },
             "type": "object"
         }
 
         await client1.write_dict(second_chain_second_block_message)
-        
+
         response = await client1.read_dict()
         self.assertIn("error", response['type'])
         self.assertIn("height does not match block height", response['error'])
 
         await client1.close()
-
-    
-
-
-    
-
 
 
 if __name__ == "__main__":
