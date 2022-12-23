@@ -213,7 +213,7 @@ class Node:
                             "blockid": block_id
                         })
                     else:
-                        raise ProtocolError("Received a 'getchaintip' message, even though no blocks have been stored yet")
+                        logging.info("Received a 'getchaintip' message, even though no blocks have been stored yet")
                 case "chaintip":
                     block_id = message["blockid"]
                     if block_id in self._objs:
