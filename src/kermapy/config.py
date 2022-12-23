@@ -10,7 +10,7 @@ def _getenv_as_int(key: str, default: int) -> int:
     return int(os.getenv(key, default))
 
 
-VERSION = "1.2.1"
+VERSION = "1.3.0"
 TARGET = "00000002af000000000000000000000000000000000000000000000000000000"
 GENESIS = "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
 BU = 10 ** 12
