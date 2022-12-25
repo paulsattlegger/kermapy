@@ -253,6 +253,32 @@ CHAINTIP = {
     "required": ["type", "blockid"],
     "additionalProperties": False
 }
+GET_MEMPOOL = { 
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["getmempool"]
+        },
+    },
+    "required": ["type"],
+    "additionalProperties": False
+}
+MEMPOOL = { 
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": ["mempool"]
+        },
+         "txids": {
+            "type": "array",
+            "items": HEXIFIED_VALUE_32,
+        },
+    },
+    "required": ["type", "txids"],
+    "additionalProperties": False
+}
 
 
 MESSAGE = {
@@ -266,17 +292,7 @@ MESSAGE = {
         GET_OBJECT,
         GET_CHAINTIP,
         CHAINTIP,
-        {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string",
-                    "enum": [
-                        "getmempool",
-                        "mempool",]
-                }
-            },
-            "required": ["type"]
-        }
+        GET_MEMPOOL,
+        MEMPOOL
     ]
 }

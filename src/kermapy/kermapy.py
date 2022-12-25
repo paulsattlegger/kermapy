@@ -125,6 +125,7 @@ class Node:
                     await conn.write_message(messages.HELLO)
                     await conn.write_message(messages.GET_PEERS)
                     await conn.write_message(messages.GET_CHAINTIP)
+                    await conn.write_message(messages.GET_MEMPOOL)
                     # Handshake
                     message = await conn.read_message()
                     validate(message, schemas.HELLO)
@@ -224,6 +225,17 @@ class Node:
                             "type": "getobject",
                             "objectid": block_id
                         }) 
+                case "getmempool":
+                    #Method for getting the mempool
+                    if False:
+                        await conn.write_message({
+                            "type": "mempool",
+                            "txids": txids
+                        })
+                    else:
+                        logging.info("Received a 'getmempool' message, even though no txids been in the mempool yet")
+                case "mempool":
+                    await self.get_objects(message["txids"])
                 case "hello":
                     raise ProtocolError(
                         "Received a second 'hello' message, even though handshake is completed")

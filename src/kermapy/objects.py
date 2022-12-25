@@ -16,6 +16,7 @@ class Objects:
         self._heights: plyvel.PrefixedDB = self._db.prefixed_db(b'height:')
         self._utxos: plyvel.PrefixedDB = self._db.prefixed_db(b'utxo:')
         self._chaintip: plyvel.PrefixedDB = self._db.prefixed_db(b'chaintip')
+        self._mempool: plyvel.PrefixedDB = self._db.prefixed_db(b'mempool')
         self._events: dict[str, WeakSet[asyncio.Event]] = defaultdict(WeakSet)
 
     def close(self):
