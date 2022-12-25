@@ -32,6 +32,7 @@ class Client:
         await client.write(HELLO)
         await client.readline()
         await client.readline()
+        await client.readline()
         return client
 
     async def readline(self) -> bytes:
@@ -138,6 +139,7 @@ class Task1TestCase(KermaTestCase):
     async def test_getErrorNoHelloMsg(self):
         # If Grader sends any message before sending hello, your node should send an error message and then disconnect.
         client = await Client.new()
+        await client.readline()
         await client.readline()
         await client.readline()
         await client.readline()
@@ -320,6 +322,7 @@ class Task2TestCase(KermaTestCase):
     async def test_objectSentAndHandshakeNotCompleted_shouldNotReceiveIHaveObject(self):
         client = await Client.new_established()
         client2 = await Client.new()
+        await client2.readline()
         await client2.readline()
         await client2.readline()
         await client2.readline()
