@@ -230,7 +230,7 @@ class Node:
                     if False:
                         await conn.write_message({
                             "type": "mempool",
-                            "txids": txids
+                            "txids": []
                         })
                     else:
                         logging.info("Received a 'getmempool' message, even though no txids been in the mempool yet")
