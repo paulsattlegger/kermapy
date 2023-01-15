@@ -7,7 +7,7 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
 from org.webpki.json.Canonicalize import canonicalize
-from . import config, messages, objects, peers, schemas, transaction_validation, utxo
+from . import config, messages, objects, peers, schemas, transaction_validation, utxo, mempool
 
 
 class ProtocolError(Exception):
@@ -56,7 +56,7 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, storage_path: str, timeout: float = 5) -> None:
+    def __init__(self, listen_addr: str, storage_path: str, timeout: float = 300) -> None:
         self._server = None
         self._listen_addr: str = listen_addr
         self._peers: peers.Peers = peers.Peers(storage_path)
@@ -66,7 +66,8 @@ class Node:
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
         self._timeout = timeout
-
+        self._mempool = mempool.Mempool(self._objs)
+        self._mempool.init()
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -176,7 +177,22 @@ class Node:
                             self._objs.put_object(obj)
                         elif obj["type"] == "block":
                             utxo_set = await self.validate_block(obj)
-                            self._objs.put_block(obj, utxo_set)
+
+                            if obj["previd"]:
+                                height = self._objs.height(obj["previd"]) + 1
+                            else:
+                                height = 0
+
+                            new_chaintip = False
+                            current_chaintip_id = self._objs.chaintip()
+
+                            if not current_chaintip_id or self._objs.height(current_chaintip_id) < height:
+                                new_chaintip = True
+
+                            self._objs.put_block(obj, utxo_set, height, new_chaintip)
+
+                            if new_chaintip:
+                                self._mempool.handle_chaintip_change()
                         logging.info(
                             f"Saved object: {obj} with object ID: {object_id}")
                         self.broadcast({
@@ -224,9 +240,9 @@ class Node:
                         await conn.write_message({
                             "type": "getobject",
                             "objectid": block_id
-                        }) 
+                        })
                 case "getmempool":
-                    #Method for getting the mempool
+                    # Method for getting the mempool
                     if False:
                         await conn.write_message({
                             "type": "mempool",

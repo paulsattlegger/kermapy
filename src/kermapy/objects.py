@@ -57,13 +57,9 @@ class Objects:
         del self._events[object_id]
         self._objects.put(bytes.fromhex(object_id), canonicalize(obj))
 
-    def put_block(self, obj: dict, utxo_set: dict):
+    def put_block(self, obj: dict, utxo_set: dict, height: int, new_chaintip: bool):
         object_id = self.id(obj)
-        if obj["previd"]:
-            height = self.height(obj["previd"]) + 1
-        else:
-            height = 0
-        if not self.chaintip() or self.height(self.chaintip()) < height:
+        if new_chaintip:
             self._chaintip.put(b'', bytes.fromhex(object_id))
         self._heights.put(bytes.fromhex(object_id), int.to_bytes(height, 256, 'big', signed=False))
         self._utxos.put(bytes.fromhex(object_id), canonicalize(utxo_set))
