@@ -53,9 +53,13 @@ def validate_transaction(transaction: dict, objs: objects.Objects) -> Transactio
 def _validate_inputs(transaction: dict, objs: objects.Objects) -> int:
     total_input_value = 0
 
+    outpoints_as_string = []
+
     for inpt in transaction["inputs"]:
         outpoint = inpt["outpoint"]
         tx_id = outpoint["txid"]
+
+        outpoints_as_string.append(str(outpoint["index"]) + outpoint["txid"])
 
         try:
             stored_transaction = objs.get(tx_id)
@@ -68,6 +72,14 @@ def _validate_inputs(transaction: dict, objs: objects.Objects) -> int:
             tx_id, inpt, transaction, stored_transaction, index)
 
         total_input_value += int(stored_transaction["outputs"][index]["value"])
+
+    # Remove duplicates
+    outpoints_set = set(outpoints_as_string)
+
+    # Validate that multiple inputs do not have the same outpoint
+    if len(outpoints_set) != len(outpoints_as_string):
+        raise InvalidTransaction(
+            f"Transaction with id '{tx_id}' has multiple inputs with the same outpoint")
 
     return total_input_value
 
