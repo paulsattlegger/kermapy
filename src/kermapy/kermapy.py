@@ -175,6 +175,7 @@ class Node:
                         if obj["type"] == "transaction":
                             self.validate_transaction(obj)
                             self._objs.put_object(obj)
+                            self._mempool.add_tx(self._objs.id(obj))
                         elif obj["type"] == "block":
                             utxo_set = await self.validate_block(obj)
 
