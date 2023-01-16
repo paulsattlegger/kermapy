@@ -2,6 +2,7 @@ import objects
 from abc import ABC, abstractmethod
 from typing import List
 from enum import Enum
+from . import utxo
 
 
 class MempoolState(Enum):
@@ -9,7 +10,7 @@ class MempoolState(Enum):
     CHAIN = 2
 
 
-class MempoolOpenTxStorage(ABC):
+class MempoolTxStorage(ABC):
     @abstractmethod
     def put(self, tx_id: str, state: MempoolState) -> None:
         pass
@@ -30,8 +31,12 @@ class MempoolOpenTxStorage(ABC):
     def get_all(self) -> List[str]:
         pass
 
+    @abstractmethod
+    def get_all_with_filter(self, state: MempoolState):
+        pass
 
-class LocalMempoolOpenTxStorage(MempoolOpenTxStorage):
+
+class LocalMempoolTxStorage(MempoolTxStorage):
     def __init__(self) -> None:
         self._tx = dict()
 
@@ -56,26 +61,29 @@ class LocalMempoolOpenTxStorage(MempoolOpenTxStorage):
     def get_all(self) -> List[str]:
         return list(self._tx.keys())
 
+    def get_all_with_filter(self, state: MempoolState):
+        return list(
+            filter(lambda x: self._tx[x] == state, self.get_all())
+        )
+
 
 class Mempool:
     def __init__(self, objs: objects.Objects) -> None:
+        self._chain_block_list: List[str] = []
+        self._utxo_tmp = dict()
         self._chaintip_id = None
         self._height = None
         self._objs = objs
-        self._storage: MempoolOpenTxStorage = LocalMempoolOpenTxStorage()
+        self._storage: MempoolTxStorage = LocalMempoolTxStorage()
 
     def add_tx(self, tx_id: str) -> None:
-        # TODO tmp utxo handling
         existing = self._storage.get(tx_id)
 
         if existing is not None:
             pass
 
         self._storage.put(tx_id, MempoolState.MEMPOOL)
-
-    def add_tx_from_block(self, tx_id: str) -> None:
-        # TODO tmp utxo handling
-        self._storage.put(tx_id, MempoolState.CHAIN)
+        utxo.adjust_utxo_set_add_transaction(self._utxo_tmp, tx_id, self._objs)
 
     def init(self) -> None:
         try:
@@ -85,6 +93,10 @@ class Mempool:
             if self._chaintip_id is None:
                 self._height = -1
                 return
+
+            self._chain_block_list.clear()
+            self._chain_block_list.append(self._chaintip_id)
+            self._utxo_tmp = self._objs.utxo(self._chaintip_id)
 
             self._height = self._objs.height(self._chaintip_id)
 
@@ -96,9 +108,11 @@ class Mempool:
                 tx_ids = chaintip["txids"]
 
                 for tx_id in tx_ids:
-                    self.add_tx_from_block(tx_id)
+                    self._storage.put(tx_id, MempoolState.CHAIN)
 
-                prev_block_id = chaintip["previd"]
+                self._chain_block_list.append(prev_block_id)
+
+                prev_block_id = self._objs.get(prev_block_id)["previd"]
 
         except KeyError:
             pass
@@ -107,19 +121,53 @@ class Mempool:
         new_chaintip_id = self._objs.chaintip()
         new_height = self._objs.height(new_chaintip_id)
 
-        new_chaintip = self._objs.get(self._chaintip_id)
+        new_chaintip = self._objs.get(new_chaintip_id)
 
-        if new_chaintip["previd"] is self._chaintip_id and new_height - 1 is self._height:
+        if new_chaintip["previd"] == self._chaintip_id and (new_height - 1) == self._height:
             tx_ids = new_chaintip["txids"]
 
             for tx_id in tx_ids:
-                self.add_tx_from_block(tx_id)
+                self._storage.put(tx_id, MempoolState.CHAIN)
+
+            self._utxo_tmp = self._objs.utxo(new_chaintip_id)
+
+            for tx_id in self._storage.get_all_with_filter(MempoolState.MEMPOOL):
+                utxo.adjust_utxo_set_add_transaction(self._utxo_tmp, tx_id, self._objs)
 
             self._chaintip_id = new_chaintip_id
             self._height = new_height
+            self._chain_block_list.insert(0, new_chaintip_id)
         else:
-            # TODO handle chain switch
-            pass
+            txs_to_move_to_mempool: List[str] = []
+
+            new_chaintip_id = self._objs.chaintip()
+            new_chaintip = self._objs.get(new_chaintip_id)
+
+            shared_block_id = new_chaintip["previd"]
+
+            # Find shared block by both chains
+            while shared_block_id is not None and shared_block_id not in self._chain_block_list:
+                shared_block_id = self._objs.get(shared_block_id)["previd"]
+
+            old_chaintip = self._objs.get(self._chaintip_id)
+            txs_to_move_to_mempool.extend(old_chaintip["txids"])
+
+            prev_block_id = old_chaintip["previd"]
+
+            # Mark transactions to be removed up to the shared block
+            while prev_block_id != shared_block_id:
+                prev_block = self._objs.get(prev_block_id)
+                txs_to_move_to_mempool.extend(prev_block_id["txids"])
+                prev_block_id = prev_block["previd"]
+
+            for tx_id in txs_to_move_to_mempool:
+                self._storage.put(tx_id, MempoolState.MEMPOOL)
+
+            # can be optimized to not start from scratch
+            self.init()
+
+            for tx_id in self._storage.get_all_with_filter(MempoolState.MEMPOOL):
+                utxo.adjust_utxo_set_add_transaction(self._utxo_tmp, tx_id, self._objs)
 
     def get_pending(self) -> List[str]:
-        return self._storage.get_all()
+        return self._storage.get_all_with_filter(MempoolState.MEMPOOL)
