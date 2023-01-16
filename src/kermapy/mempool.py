@@ -123,6 +123,7 @@ class Mempool:
 
         new_chaintip = self._objs.get(new_chaintip_id)
 
+        # check if just a block was appended to the existing chain (no fork)
         if new_chaintip["previd"] == self._chaintip_id and (new_height - 1) == self._height:
             tx_ids = new_chaintip["txids"]
 
@@ -137,6 +138,7 @@ class Mempool:
             self._chaintip_id = new_chaintip_id
             self._height = new_height
             self._chain_block_list.insert(0, new_chaintip_id)
+        # fork it is
         else:
             txs_to_move_to_mempool: List[str] = []
 
