@@ -7,6 +7,7 @@ from weakref import WeakSet
 import plyvel
 
 from org.webpki.json.Canonicalize import canonicalize
+from . import config
 
 
 class Objects:
@@ -18,6 +19,7 @@ class Objects:
         self._chaintip: plyvel.PrefixedDB = self._db.prefixed_db(b'chaintip')
         self._mempool: plyvel.PrefixedDB = self._db.prefixed_db(b'mempool')
         self._events: dict[str, WeakSet[asyncio.Event]] = defaultdict(WeakSet)
+        self.put_block(config.GENESIS, {})
 
     def close(self):
         return self._db.close()

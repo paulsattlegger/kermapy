@@ -427,25 +427,6 @@ class Task3TestCase(KermaTestCase):
 
         await client.close()
 
-    async def append_block0(self, client):
-        block_message = {
-            "object":
-                {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
-                    "miner": "dionyziz", "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
-                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
-                    "previd": None, "txids": [], "type": "block"
-                },
-            "type": "object"
-        }
-
-        await client.write_dict(block_message)
-        ihaveobject_message = {
-            "type": "ihaveobject",
-            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
-        }
-        self.assertDictEqual(ihaveobject_message, await client.read_dict())
-
     async def append_block1(self, client):
         cb_block1_after_genesis = {
             "height": 1, "outputs": [
@@ -576,7 +557,6 @@ class Task3TestCase(KermaTestCase):
         # d. There are two transactions in the block that spend the same output.
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
         await self.append_block1(client1)
         await self.append_block2_cb(client1)
 
@@ -645,7 +625,6 @@ class Task3TestCase(KermaTestCase):
         # e. A transaction attempts to spend an output
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
         await self.append_block1(client1)
         await self.append_block2_cb_tx(client1)
 
@@ -695,8 +674,6 @@ class Task3TestCase(KermaTestCase):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
-
         tx_block1_after_genesis = {
             "height": 1, "outputs": [
                 {
@@ -739,7 +716,6 @@ class Task3TestCase(KermaTestCase):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
         await self.append_block1(client1)
 
         cb_block2_after_genesis = {
@@ -808,7 +784,6 @@ class Task3TestCase(KermaTestCase):
         # f. The coinbase transaction has an output that exceeds the block rewards and the fees.
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
         await self.append_block1(client1)
 
         cb_block2_after_genesis = {
@@ -876,8 +851,6 @@ class Task3TestCase(KermaTestCase):
     async def test_sendBlockCoinbaseTransactionHeightNotMatchingBlockHeight_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
-
         tx_cb_message = {
             "height": 2, "outputs": [
                 {
@@ -918,7 +891,6 @@ class Task3TestCase(KermaTestCase):
     async def test_sendBlockCoinbaseTransactionIndex1_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
         await self.append_block1(client1)
 
         cb_block2_after_genesis = {
@@ -986,7 +958,6 @@ class Task3TestCase(KermaTestCase):
     async def test_sendBlockTwoCoinbaseTransactions_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
         tx_cb_1_message = {
             "object": {
                 "height": 1, "outputs": [{
@@ -1037,8 +1008,6 @@ class Task3TestCase(KermaTestCase):
 
     async def test_sendBlockCoinbaseTransactionSpentInAnotherTransactionSameBlock_shouldReceiveErrorMessage(self):
         client1 = await Client.new_established()
-
-        await self.append_block0(client1)
 
         cbtx_message = {
             "object": {
@@ -1101,27 +1070,40 @@ class Task3TestCase(KermaTestCase):
     async def test_sendValidBlockGrader1_shouldReceiveIHaveObjectGrader2(self):
         # 2. On receiving an object message from Grader 1 containing a valid block, the block must
         #    be gossiped to Grader 2 by sending an ihaveobject message with the correct blockid.
-
         client1 = await Client.new_established()
+
+        cb_block1_after_genesis = {
+            "height": 1, "outputs": [
+                {
+                    "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
+                    "value": 50000000000000
+                }],
+            "type": "transaction"
+        }
+        ihaveobject_message = {
+            "type": "ihaveobject",
+            "objectid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+        }
+        self.assertDictEqual(ihaveobject_message, await client1.write_tx(cb_block1_after_genesis))
+
         client2 = await Client.new_established()
 
         block_message = {
-            "object":
-                {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
-                    "miner": "dionyziz", "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
-                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
-                    "previd": None, "txids": [], "type": "block"
-                },
-            "type": "object"
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624220079,
+                "miner": "Snekel testminer",
+                "nonce": "000000000000000000000000000000000000000000000000000000009d8b60ea",
+                "note": "First block after genesis with CBTX",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": ["2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"], "type": "block"
+            }, "type": "object"
         }
-
-        await client1.write_dict(block_message)
 
         ihaveobject_message = {
             "type": "ihaveobject",
-            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+            "objectid": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e"
         }
+        await client1.write_dict(block_message)
 
         self.assertDictEqual(ihaveobject_message, await client1.read_dict())
         self.assertDictEqual(ihaveobject_message, await client2.read_dict())
@@ -1266,25 +1248,6 @@ class Task4TestCase(KermaTestCase):
     # the object message. Grader 1 must receive an error message, and Grader 2 must not
     # receive an ihaveobject message with the corresponding blockid.
 
-    async def append_block0(self, client):
-        block_message = {
-            "object":
-                {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
-                    "miner": "dionyziz", "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
-                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
-                    "previd": None, "txids": [], "type": "block"
-                },
-            "type": "object"
-        }
-
-        await client.write_dict(block_message)
-        ihaveobject_message = {
-            "type": "ihaveobject",
-            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
-        }
-        self.assertDictEqual(ihaveobject_message, await client.read_dict())
-
     async def append_block1(self, client):
         cb_block1_after_genesis = {
             "height": 1, "outputs": [
@@ -1321,8 +1284,6 @@ class Task4TestCase(KermaTestCase):
         # b. A blockchain with non-increasing timestamps
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
-
         block_message = {
             "object":
                 {
@@ -1346,8 +1307,6 @@ class Task4TestCase(KermaTestCase):
     async def test_sendBlockchainBlockInYear2077_shouldReceiveErrorMessage(self):
         # c. A blockchain with a block in the year 2077
         client1 = await Client.new_established()
-
-        await self.append_block0(client1)
 
         block_message = {
             "object":
@@ -1374,8 +1333,6 @@ class Task4TestCase(KermaTestCase):
         # (with valid PoW but a null previd)
         client1 = await Client.new_established()
 
-        await self.append_block0(client1)
-
         block_message = {
             "object":
                 {
@@ -1395,44 +1352,6 @@ class Task4TestCase(KermaTestCase):
         await client1.close()
 
     async def test_sendBlockchainMissingParentBlock_shouldReceiveGetObjectParent(self):
-        client1 = await Client.new_established()
-
-        cb_block1_after_genesis = {
-            "height": 1, "outputs": [
-                {
-                    "pubkey": "f66c7d51551d344b74e071d3b988d2bc09c3ffa82857302620d14f2469cfbf60",
-                    "value": 50000000000000
-                }],
-            "type": "transaction"
-        }
-        ihaveobject_message = {
-            "type": "ihaveobject",
-            "objectid": "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
-        }
-        self.assertDictEqual(ihaveobject_message, await client1.write_tx(cb_block1_after_genesis))
-
-        block_message = {
-            "object": {
-                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624220079,
-                "miner": "Snekel testminer",
-                "nonce": "000000000000000000000000000000000000000000000000000000009d8b60ea",
-                "note": "First block after genesis with CBTX",
-                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                "txids": ["2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"], "type": "block"
-            }, "type": "object"
-        }
-        getobject_message = {
-            "type": "getobject",
-            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
-        }
-        await client1.write_dict(block_message)
-        self.assertDictEqual(getobject_message, await client1.read_dict())
-
-        await self.append_block0(client1)
-
-        await client1.close()
-
-    async def test_sendBlockchainMissingParentsBlock_shouldReceiveGetObjectParentsRecursively(self):
         client1 = await Client.new_established()
 
         tx_block2_after_genesis = {
@@ -1490,30 +1409,8 @@ class Task4TestCase(KermaTestCase):
                 "txids": ["2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"], "type": "block"
             }, "type": "object"
         }
-        getobject_message = {
-            "type": "getobject",
-            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
-        }
-        await client1.write_dict(block_message)
-        self.assertDictEqual(getobject_message, await client1.read_dict())
-
-        block_message = {
-            "object":
-                {
-                    "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1624219079,
-                    "miner": "dionyziz", "nonce": "0000000000000000000000000000000000000000000000000000002634878840",
-                    "note": "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
-                    "previd": None, "txids": [], "type": "block"
-                },
-            "type": "object"
-        }
 
         await client1.write_dict(block_message)
-        ihaveobject_message = {
-            "type": "ihaveobject",
-            "objectid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
-        }
-        self.assertDictEqual(ihaveobject_message, await client1.read_dict())
         ihaveobject_message = {
             "type": "ihaveobject",
             "objectid": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e"
@@ -1529,7 +1426,6 @@ class Task4TestCase(KermaTestCase):
 
     async def test_sendGetChaintipOnEstablishedConnections(self):
         client1 = await Client.new_established()
-        await self.append_block0(client1)
         await client1.close()
 
         client2 = await Client.new()
@@ -1548,7 +1444,6 @@ class Task4TestCase(KermaTestCase):
 
     async def test_sendChaintipMessage(self):
         client1 = await Client.new_established()
-        await self.append_block0(client1)
         await client1.write(GET_CHAINTIP)
 
         response = await client1.read_dict()
@@ -1561,20 +1456,19 @@ class Task4TestCase(KermaTestCase):
     async def test_sendGetObjectAfterReceivingNewChaintip(self):
         client1 = await Client.new_established()
         chaintip_message = {
-            "type": "chaintip", "blockid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+            "type": "chaintip", "blockid": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e"
         }
         await client1.write_dict(chaintip_message)
 
         response = await client1.read_dict()
 
         self.assertEqual("getobject", response["type"])
-        self.assertEqual("00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e", response["objectid"])
+        self.assertEqual("0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e", response["objectid"])
 
         await client1.close()
 
     async def test_doNothingAfterReceivingOldChaintip(self):
         client1 = await Client.new_established()
-        await self.append_block0(client1)
 
         chaintip_message = {
             "type": "chaintip", "blockid": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
@@ -1590,7 +1484,6 @@ class Task4TestCase(KermaTestCase):
         # Grader 1 sends a number of valid blockchains. When Grader 1 subsequently sends a getchaintip message,
         # it must receive a chaintip message with the blockid of the tip of the longest chain.
         client1 = await Client.new_established()
-        await self.append_block0(client1)
         await client1.write(GET_CHAINTIP)
 
         response1 = await client1.read_dict()
@@ -1610,7 +1503,6 @@ class Task4TestCase(KermaTestCase):
 
     async def test_forkedChain_becomesMainChain_shouldChangeChaintip(self):
         client1 = await Client.new_established()
-        await self.append_block0(client1)
         await self.append_block1(client1)
 
         await client1.write(GET_CHAINTIP)
@@ -1671,7 +1563,6 @@ class Task4TestCase(KermaTestCase):
 
     async def test_forkedChain_proofOfWorkInvalid_shouldRaiseProtocolError(self):
         client1 = await Client.new_established()
-        await self.append_block0(client1)
         await self.append_block1(client1)
 
         await client1.write(GET_CHAINTIP)
@@ -1723,7 +1614,6 @@ class Task4TestCase(KermaTestCase):
 
     async def test_forkedChain_blockUnavailable_shouldRaiseProtocolError(self):
         client1 = await Client.new_established()
-        await self.append_block0(client1)
         await self.append_block1(client1)
 
         await client1.write(GET_CHAINTIP)
@@ -1777,7 +1667,6 @@ class Task4TestCase(KermaTestCase):
 
     async def test_forkedChain_coinbaseTxWrongHeight_shouldRaiseProtocolError(self):
         client1 = await Client.new_established()
-        await self.append_block0(client1)
         await self.append_block1(client1)
 
         await client1.write(GET_CHAINTIP)

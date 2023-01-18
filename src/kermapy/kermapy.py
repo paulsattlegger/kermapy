@@ -67,7 +67,6 @@ class Node:
         self._objs: objects.Objects = objects.Objects(storage_path)
         self._timeout = timeout
 
-
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
                                                   limit=config.BUFFER_SIZE)
@@ -125,7 +124,6 @@ class Node:
                     await conn.write_message(messages.HELLO)
                     await conn.write_message(messages.GET_PEERS)
                     await conn.write_message(messages.GET_CHAINTIP)
-                    await conn.write_message(messages.GET_MEMPOOL)
                     # Handshake
                     message = await conn.read_message()
                     validate(message, schemas.HELLO)
@@ -224,7 +222,7 @@ class Node:
                         await conn.write_message({
                             "type": "getobject",
                             "objectid": block_id
-                        }) 
+                        })
                 case "getmempool":
                     #Method for getting the mempool
                     if False:
@@ -299,7 +297,7 @@ class Node:
             if self._objs.get(block["previd"])["created"] > block["created"]:
                 raise ProtocolError("Received block with timestamp not later than of its parent")
         else:
-            if block_id != config.GENESIS:
+            if block_id != objects.Objects.id(config.GENESIS):
                 raise ProtocolError("Received block which stops at a different genesis")
         # ... and earlier than the current time.
         if block["created"] > time.time():
