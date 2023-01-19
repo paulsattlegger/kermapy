@@ -225,7 +225,7 @@ class Node:
                             "objectid": block_id
                         })
                 case "getmempool":
-                    #Method for getting the mempool
+                    # Method for getting the mempool
                     if False:
                         await conn.write_message({
                             "type": "mempool",
