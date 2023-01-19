@@ -243,11 +243,11 @@ class Node:
                             "objectid": block_id
                         })
                 case "getmempool":
-                    # Method for getting the mempool
-                    if False:
+                    txs_in_mempool = self._mempool.get_pending()
+                    if len(txs_in_mempool) > 0:
                         await conn.write_message({
                             "type": "mempool",
-                            "txids": []
+                            "txids": txs_in_mempool
                         })
                     else:
                         logging.info("Received a 'getmempool' message, even though no txids been in the mempool yet")
