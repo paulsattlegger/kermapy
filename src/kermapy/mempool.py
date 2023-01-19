@@ -81,7 +81,7 @@ class Mempool:
         existing = self._storage.get(tx_id)
 
         if existing is not None:
-            pass
+            return
 
         try:
             utxo.adjust_utxo_set_add_transaction(self._utxo_tmp, tx_id, self._objs)
