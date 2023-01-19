@@ -1,3 +1,4 @@
+import logging
 import objects
 from abc import ABC, abstractmethod
 from typing import List
@@ -82,8 +83,11 @@ class Mempool:
         if existing is not None:
             pass
 
-        self._storage.put(tx_id, MempoolState.MEMPOOL)
-        utxo.adjust_utxo_set_add_transaction(self._utxo_tmp, tx_id, self._objs)
+        try:
+            utxo.adjust_utxo_set_add_transaction(self._utxo_tmp, tx_id, self._objs)
+            self._storage.put(tx_id, MempoolState.MEMPOOL)
+        except utxo.UtxoError:
+            logging.warning(f"Rejected tx with id '{tx_id}' because of utxo error when adding tx")
 
     def init(self) -> None:
         try:
