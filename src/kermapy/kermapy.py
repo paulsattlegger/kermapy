@@ -124,6 +124,7 @@ class Node:
                     await conn.write_message(messages.HELLO)
                     await conn.write_message(messages.GET_PEERS)
                     await conn.write_message(messages.GET_CHAINTIP)
+                    await conn.write_message(messages.GET_MEMPOOL)
                     # Handshake
                     message = await conn.read_message()
                     validate(message, schemas.HELLO)
