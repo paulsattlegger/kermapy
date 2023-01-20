@@ -316,7 +316,7 @@ class Node:
             if self._objs.get(block["previd"])["created"] > block["created"]:
                 raise ProtocolError("Received block with timestamp not later than of its parent")
         else:
-            if block_id != config.GENESIS:
+            if block_id != objects.Objects.id(config.GENESIS):
                 raise ProtocolError("Received block which stops at a different genesis")
         # ... and earlier than the current time.
         if block["created"] > time.time():

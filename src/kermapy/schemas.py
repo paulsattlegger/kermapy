@@ -230,7 +230,7 @@ OBJECT = {
     "required": ["type", "object"],
     "additionalProperties": False
 }
-GET_CHAINTIP = { 
+GET_CHAINTIP = {
     "type": "object",
     "properties": {
         "type": {
@@ -253,7 +253,7 @@ CHAINTIP = {
     "required": ["type", "blockid"],
     "additionalProperties": False
 }
-GET_MEMPOOL = { 
+GET_MEMPOOL = {
     "type": "object",
     "properties": {
         "type": {
@@ -264,14 +264,14 @@ GET_MEMPOOL = {
     "required": ["type"],
     "additionalProperties": False
 }
-MEMPOOL = { 
+MEMPOOL = {
     "type": "object",
     "properties": {
         "type": {
             "type": "string",
             "enum": ["mempool"]
         },
-         "txids": {
+        "txids": {
             "type": "array",
             "items": HEXIFIED_VALUE_32,
         },
@@ -279,7 +279,6 @@ MEMPOOL = {
     "required": ["type", "txids"],
     "additionalProperties": False
 }
-
 
 MESSAGE = {
     "anyOf": [
