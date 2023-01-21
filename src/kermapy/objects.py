@@ -19,7 +19,8 @@ class Objects:
         self._chaintip: plyvel.PrefixedDB = self._db.prefixed_db(b'chaintip')
         self._mempool: plyvel.PrefixedDB = self._db.prefixed_db(b'mempool')
         self._events: dict[str, WeakSet[asyncio.Event]] = defaultdict(WeakSet)
-        self.put_block(config.GENESIS, {})
+        if self.id(config.GENESIS) not in self:
+            self.put_block(config.GENESIS, {}, 0, True)
 
     def close(self):
         return self._db.close()
