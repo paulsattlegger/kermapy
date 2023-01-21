@@ -1,8 +1,9 @@
 import logging
-import objects
 from abc import ABC, abstractmethod
-from typing import List
 from enum import Enum
+from typing import List
+
+from . import objects
 from . import utxo
 
 
