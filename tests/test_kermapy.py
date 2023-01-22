@@ -2259,10 +2259,6 @@ class Task5TestCase(KermaTestCase):
 
         await client1.write(GET_CHAINTIP)
         chaintip_response = await client1.read_dict()
-        await client1.write_dict({"type":"getobject","objectid":"2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"})
-        first = await client1.read_dict()
-        await client1.write_dict({"type":"getobject","objectid":"73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"})
-        second = await client1.read_dict()
         self.assertIn("00000000f4e07f739943c7048f116970db7ec4b7f273d1e0ebba67fb347a7762", chaintip_response['blockid'])
 
         await client1.write(GET_MEMPOOL)
