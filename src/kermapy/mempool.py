@@ -164,7 +164,7 @@ class Mempool:
             # Mark transactions to be removed up to the shared block
             while prev_block_id != shared_block_id:
                 prev_block = self._objs.get(prev_block_id)
-                txs_to_move_to_mempool.extend(prev_block_id["txids"])
+                txs_to_move_to_mempool.extend(prev_block["txids"])
                 prev_block_id = prev_block["previd"]
 
             for tx_id in txs_to_move_to_mempool:
