@@ -175,7 +175,8 @@ class Node:
                         if obj["type"] == "transaction":
                             self.validate_transaction(obj)
                             self._objs.put_object(obj)
-                            self._mempool.add_tx(self._objs.id(obj))
+                            if "height" not in obj:
+                                self._mempool.add_tx(self._objs.id(obj))
                         elif obj["type"] == "block":
                             utxo_set = await self.validate_block(obj)
 
@@ -243,6 +244,7 @@ class Node:
                             "objectid": block_id
                         })
                 case "getmempool":
+                    logging.info("Received a 'getmempool' message, even though no txids been in the mempool yet")
                     txs_in_mempool = self._mempool.get_pending()
                     if len(txs_in_mempool) > 0:
                         await conn.write_message({
@@ -250,9 +252,14 @@ class Node:
                             "txids": txs_in_mempool
                         })
                     else:
-                        logging.info("Received a 'getmempool' message, even though no txids been in the mempool yet")
+                        await conn.write_message({
+                            "type": "mempool",
+                            "txids": []
+                        })
                 case "mempool":
-                    await self.get_objects(message["txids"])
+                    txids = message["txids"]
+                    if len(txids) > 0:
+                        await self.get_objects(txids)
                 case "hello":
                     raise ProtocolError(
                         "Received a second 'hello' message, even though handshake is completed")
