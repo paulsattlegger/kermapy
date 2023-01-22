@@ -2263,7 +2263,7 @@ class Task5TestCase(KermaTestCase):
 
         await client1.write(GET_MEMPOOL)
         mempool_response = await client1.read_dict()
-        self.assertIn("7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799", mempool_response['txids'][0])
+        self.assertIn("2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df", mempool_response['txids'][0])
 
 
 if __name__ == "__main__":
