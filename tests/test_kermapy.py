@@ -1943,7 +1943,8 @@ class Task5TestCase(KermaTestCase):
                 "txids": ["472cac1f3a5ce611f9eb10512e109c18dfc4b1b168e63ef89ebea962a206d871"],
                 "type": "block"
             },
-            "type": "object"}
+            "type": "object"
+        }
 
         await client1.write_dict(invalid_block_with_non_ascii)
 
@@ -2110,13 +2111,13 @@ class Task5TestCase(KermaTestCase):
     async def test_mempoolContainsNotInvalidSentTransaction(self):
         client1 = await Client.new_established()
         await self.append_block1(client1)
-        invalid_transaction = {
+        invalid_transaction = { 
             "inputs": [{
                 "outpoint": {
                     "index": 0,
-                    "txid": 'test'
+                    "txid": '4a7f4fb59ee4b3b2f940cf0efb6a09d9b74e8f30f9f8cc381e77fe8f69e996e2'
                 },
-                "sig": 'test'
+                "sig": '49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b'
             },
             ],
             "outputs": [{
@@ -2125,18 +2126,10 @@ class Task5TestCase(KermaTestCase):
             ],
             "type": "transaction"
         }
+        
         response = await client1.write_tx(invalid_transaction)
 
         self.assertIn("error", response['type'])
-        # TODO: "Failed to validate incoming message: 'transaction' is not one of ['block']"
-        """
-        "sig": {
-            "type": "string",
-            "pattern": r"^[0-9a-f]+$",
-            "minLength": 128,
-            "maxLength": 128
-        }
-        """
         client2 = await Client.new_established()
 
         await client2.write(GET_MEMPOOL)
@@ -2149,18 +2142,18 @@ class Task5TestCase(KermaTestCase):
     async def test_mempoolContainsNotCoinbaseSentTransaction(self):
         client1 = await Client.new_established()
         await self.append_block1(client1)
-        invalid_transaction = {
-            "height": 1,
+        cb_transaction = {
+            "height": 0,
             "outputs": [{
-                "pubkey": "Test",
-                "value": 50000000000000}
+                    "pubkey": "c7c2c13afd02be7986dee0f4630df01abdbc950ea379055f1a423a6090f1b2b3",
+                    "value": 1
+                }
             ],
             "type": "transaction"
         }
-        response = await client1.write_tx(invalid_transaction)
+        response = await client1.write_tx(cb_transaction)
 
-        self.assertIn("error", response['type'])
-        # TODO: "Failed to validate incoming message: 'transaction' is not one of ['block']"
+        self.assertIn("ihaveobject", response['type'])
         client2 = await Client.new_established()
 
         await client2.write(GET_MEMPOOL)
@@ -2275,13 +2268,15 @@ class Task5TestCase(KermaTestCase):
         await client1.readline()
 
         second_chain_second_block_message = {
-            "object": {
-                "T": "00000002af000000000000000000000000000000000000000000000000000000",
-                "created": 1624219200, "miner": "SneakyDude",
-                "nonce": "000000000000000000000000000000000000000000000000b000000007047bb1",
-                "note": "Second block of second chain",
-                "previd": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
-                "txids": [], "type": "block"
+            "object": { 
+                "T":"00000002af000000000000000000000000000000000000000000000000000000",
+                "created":1674580127,
+                "miner":"Kermars",
+                "nonce":"0000000000000000000000000000000000000000000000000000000003093f36",
+                "note":"Second block of second chain",
+                "previd":"0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
+                "txids":["73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"],
+                "type":"block"
             },
             "type": "object"
         }
@@ -2291,10 +2286,11 @@ class Task5TestCase(KermaTestCase):
 
         second_chain_third_block_message = {
             "T": "00000002af000000000000000000000000000000000000000000000000000000",
-            "created": 1674424538, "miner": "Kermars",
-            "nonce": "000000000000000000000000000000000000000000000000e000000014949e54",
+            "created": 1674580458,
+            "miner": "Kermars",
+            "nonce": "000000000000000000000000000000000000000000000000a000000008405d72",
             "note": "Third block of second chain",
-            "previd": "000000024297ac6fe162c32dd1f43d2352adec27c1f36ccdd6e7cf0c8b5ed40b",
+            "previd": "000000012399208d1bc2bbf8a4ff3d4b3a0f175d59d583ba0816e4bc3122df46",
             "txids": [],
             "type": "block"
         }
@@ -2305,7 +2301,7 @@ class Task5TestCase(KermaTestCase):
 
         await client1.write(GET_CHAINTIP)
         chaintip_response = await client1.read_dict()
-        self.assertIn("00000000f4e07f739943c7048f116970db7ec4b7f273d1e0ebba67fb347a7762", chaintip_response['blockid'])
+        self.assertIn("000000023c64f148c39b0ced8d00e9e8f531e3b8d82da0614e2b4e75411d9a29", chaintip_response['blockid'])
 
         await client1.write(GET_MEMPOOL)
         mempool_response = await client1.read_dict()
