@@ -569,14 +569,14 @@ class TransactionValidationTests(TestCase):
                         "index": 0, "txid":
                             "1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"
                     }, "sig":
-                        "371d35ec68bfb67858369eaa4f28ef5844d22aae0af7f3ad6992b99cbe6c55b47962efd3377cbf6d802654297dc1af1d844c84550b7c8513865291dc750deb0b"
+                    "371d35ec68bfb67858369eaa4f28ef5844d22aae0af7f3ad6992b99cbe6c55b47962efd3377cbf6d802654297dc1af1d844c84550b7c8513865291dc750deb0b"
                 },
                 {
                     "outpoint": {
                         "index": 0, "txid":
                             "1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"
                     }, "sig":
-                        "371d35ec68bfb67858369eaa4f28ef5844d22aae0af7f3ad6992b99cbe6c55b47962efd3377cbf6d802654297dc1af1d844c84550b7c8513865291dc750deb0b"
+                    "371d35ec68bfb67858369eaa4f28ef5844d22aae0af7f3ad6992b99cbe6c55b47962efd3377cbf6d802654297dc1af1d844c84550b7c8513865291dc750deb0b"
                 }
             ],
             "outputs": [{"pubkey": "8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9", "value": 10}],
