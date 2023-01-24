@@ -168,13 +168,22 @@ class Mempool:
                 prev_block_id = prev_block["previd"]
 
             for tx_id in txs_to_move_to_mempool:
-                self._storage.put(tx_id, MempoolState.MEMPOOL)
+                tx = self._objs.get(tx_id)
+
+                # is coinbase tx
+                if "height" in tx:
+                    self._storage.remove(tx_id)
+                else:
+                    self._storage.put(tx_id, MempoolState.MEMPOOL)
 
             # can be optimized to not start from scratch
             self.init()
 
             for tx_id in self._storage.get_all_with_filter(MempoolState.MEMPOOL):
-                utxo.adjust_utxo_set_add_transaction(self._utxo_tmp, tx_id, self._objs)
+                try:
+                    utxo.adjust_utxo_set_add_transaction(self._utxo_tmp, tx_id, self._objs)
+                except utxo.UtxoError:
+                    self._storage.remove(tx_id)
 
     def get_pending(self) -> List[str]:
         return self._storage.get_all_with_filter(MempoolState.MEMPOOL)
