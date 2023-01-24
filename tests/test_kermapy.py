@@ -1929,6 +1929,33 @@ class Task5TestCase(KermaTestCase):
         await client1.close()
         await client2.close()
 
+    async def test_sendInvalidBlockWithNonAscii(self):
+        client1 = await Client.new_established()
+        client2 = await Client.new_established()
+
+        invalid_block_with_non_ascii = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1674412823,
+                "miner": "¯\\_(ツ)_/¯",
+                "nonce": "00000000000000000000000000000000000000000000000000000000c1d36267",
+                "note": "Invalid block, non-ASCII character in miner field",
+                "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                "txids": ["472cac1f3a5ce611f9eb10512e109c18dfc4b1b168e63ef89ebea962a206d871"],
+                "type": "block"
+            },
+            "type": "object"}
+
+        await client1.write_dict(invalid_block_with_non_ascii)
+
+        response = await client1.read_dict()
+        self.assertIn("error", response['type'])
+        self.assertIn("does not match", response['error'])
+
+        self.assertIsNone(await client2.read_with_timeout(1))
+
+        await client1.close()
+        await client2.close()
+
     # Grader 1 sends a valid transaction with two inputs (spending outputs with different public keys).
     # Grader 2 must receive the transaction when it sends a getobject with the corresponding transaction id.
     async def test_sendValidTransactionAndReceiveItWithGetObject(self):
