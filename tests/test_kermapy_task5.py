@@ -337,18 +337,20 @@ class Task5TestCase(KermaTestCase):
         await client1.write(GET_CHAINTIP)
 
         chaintip_response = await client1.read_dict()
+        self.assertEqual("0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                         chaintip_response['blockid'])
+
         await client1.write(GET_MEMPOOL)
         mempool_response = await client1.read_dict()
 
         self.assertIn(txid, mempool_response['txids'][0])
 
+        await client1.close()
+
     # b) Grader 1 sends a transaction that is valid with respect to the mempool state.
     # Grader 1 again sends a getmempool message,
     # and this time the mempool should contain the sent transaction.
     async def test_mempoolContainsSentTransaction(self):
-        private_key = ed25519.Ed25519PrivateKey.generate()
-        pubkey_hex = private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
-
         client1 = await Client.new_established()
         await self.append_block1(client1)
 
@@ -371,12 +373,14 @@ class Task5TestCase(KermaTestCase):
             "type": "transaction"
         }
 
-        txid = (await client1.write_tx(mempool_transaction))
+        ihaveobject_message = await client1.write_tx(mempool_transaction)
 
         await client1.write(GET_MEMPOOL)
         mempool_response = await client1.read_dict()
 
-        self.assertIn(txid['objectid'], mempool_response['txids'][0])
+        self.assertIn(ihaveobject_message['objectid'], mempool_response['txids'][0])
+
+        await client1.close()
 
     # c) Grader 1 sends a transaction that is invalid with respect to the mempool state.
     # Grader 1 again sends a getmempool message,
@@ -403,12 +407,15 @@ class Task5TestCase(KermaTestCase):
         response = await client1.write_tx(invalid_transaction)
 
         self.assertIn("error", response['type'])
+        self.assertIn("not find transaction", response['error'])
         client2 = await Client.new_established()
 
         await client2.write(GET_MEMPOOL)
         mempool_response = await client2.read_dict()
 
         self.assertEqual(0, len(mempool_response['txids']))
+
+        await client1.close()
 
     # d) Grader 1 sends a coinbase transaction.
     # Grader 1 again sends a getmempool message and this time the mempool should not contain the sent transaction.
@@ -433,6 +440,9 @@ class Task5TestCase(KermaTestCase):
         mempool_response = await client2.read_dict()
 
         self.assertEqual(0, len(mempool_response['txids']))
+
+        await client1.close()
+        await client2.close()
 
     # e) Grader 1 will send a longer chain (causing a reorg) and then send a getmempool message.
     # The received mempool must be consistent with the new chain:
@@ -508,6 +518,8 @@ class Task5TestCase(KermaTestCase):
         mempool_response = await client1.read_dict()
         self.assertEqual(0, len(mempool_response['txids']))
 
+        await client1.close()
+
     # ii. It must also contain transactions that were in the old chain but
     # are not in the new chain and valid with respect to the new chain UTXO state.
 
@@ -579,3 +591,171 @@ class Task5TestCase(KermaTestCase):
         await client1.write(GET_MEMPOOL)
         mempool_response = await client1.read_dict()
         self.assertIn("7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799", mempool_response['txids'][0])
+
+        await client1.close()
+        await client2.close()
+
+    async def test_mempoolMattermost(self):
+        client1 = await Client.new_established()
+
+        cb_tx1_message = {"object": {"height": 1, "outputs": [
+            {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f", "value": 50000000000000}],
+                                     "type": "transaction"}, "type": "object"}
+
+        await client1.write_dict(cb_tx1_message)
+
+        block1_message = {
+            "object": {"T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1674407763,
+                       "miner": "crdm", "nonce": "00000000000000000000000000000000000000000000000000000000e395faad",
+                       "note": "Valid first block",
+                       "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+                       "txids": ["472cac1f3a5ce611f9eb10512e109c18dfc4b1b168e63ef89ebea962a206d871"], "type": "block"},
+            "type": "object"}
+
+        await client1.write_dict(block1_message)
+
+        tx1_spending_cb_tx1_message = {"object": {"inputs": [
+            {"outpoint": {"index": 0, "txid": "472cac1f3a5ce611f9eb10512e109c18dfc4b1b168e63ef89ebea962a206d871"},
+             "sig": "8457acdc8f7773379f19d9a9aa0dfdb7cf8a54a46f7a1cd30ebca1557c1846e47d24aebdd7c2297735b60b73efa6abc033f4cee3b11a3e72d347d848f65d0606"}],
+            "outputs": [{
+                "pubkey": "cafebabe84905f40341d44e204a1aa347025f1f3048d752de03f7187caabc9c8",
+                "value": 25000000000000}, {
+                "pubkey": "000000006dab2269617d3afeaf36242ee27c448708367451ac78e8919dc5a4e3",
+                "value": 25000000000000}], "type": "transaction"},
+            "type": "object"}
+
+        await client1.write_dict(tx1_spending_cb_tx1_message)
+
+        cb_tx2_message = {"object": {"height": 2, "outputs": [
+            {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f", "value": 50000000000000}],
+                                     "type": "transaction"}, "type": "object"}
+
+        await client1.write_dict(cb_tx2_message)
+
+        block2_message = {
+            "object": {"T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1674421809,
+                       "miner": "crdm", "nonce": "0000000000000000000000000000000000000000000000000000000061100066",
+                       "note": "Valid second block, including transaction 1",
+                       "previd": "000000002fc4fc77fddbf1b7d058e7d180a7cd36bdabe0c7b71bf5a89dce1bbd",
+                       "txids": ["e64b2a7468f7925ca5f39b187bce0a4a077c0a19b416450e557e0d05a0427600",
+                                 "e9974a7a65f2ac0c011d14849310f29f6e5910087f773947392c6f91bdbebaad"], "type": "block"},
+            "type": "object"}
+
+        await client1.write_dict(block2_message)
+
+        tx2_spending_tx1_first_output = {"object": {"inputs": [
+            {"outpoint": {"index": 0, "txid": "e9974a7a65f2ac0c011d14849310f29f6e5910087f773947392c6f91bdbebaad"},
+             "sig": "ee6ca39c2c13cec05406e9966fcdbdd3c7632fae39ecea4d0097af864000a074fee6abd3e84112e86489df0b4263a0afe646b88ac32726049f5441a568044300"}],
+            "outputs": [{"pubkey": "000000006dab2269617d3afeaf36242ee27c448708367451ac78e8919dc5a4e3",
+                         "value": 25000000000000}], "type": "transaction"}, "type": "object"}
+
+        await client1.write_dict(tx2_spending_tx1_first_output)
+
+        tx3_spending_tx1_first_output = {"object": {"inputs": [
+            {"outpoint": {"index": 0, "txid": "e9974a7a65f2ac0c011d14849310f29f6e5910087f773947392c6f91bdbebaad"},
+             "sig": "cc0a754a08237eeb5a2db651d3ddcddca00e045ea85c5ac8010400faadc4ac88939aa08e44ce570a4afad78d5aebcc00856fc983991dd587a368e785ddabc908"}],
+            "outputs": [{"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f",
+                         "value": 25000000000000}], "type": "transaction"}, "type": "object"}
+
+        await client1.write_dict(tx3_spending_tx1_first_output)
+
+        tx4_spending_tx1_second_output = {"object": {"inputs": [
+            {"outpoint": {"index": 1, "txid": "e9974a7a65f2ac0c011d14849310f29f6e5910087f773947392c6f91bdbebaad"},
+             "sig": "96628b8269b6d7bfa95909b26bdb56ab3665190378c512a49e393dd940807c1b744543c09e23284d255fb7fbf8787ab7fdef56f684f9a0f6f72760b6fa43810b"}],
+            "outputs": [{"pubkey": "000000006dab2269617d3afeaf36242ee27c448708367451ac78e8919dc5a4e3",
+                         "value": 25000000000000}], "type": "transaction"}, "type": "object"}
+
+        await client1.write_dict(tx4_spending_tx1_second_output)
+
+        # Assert 1
+        client2 = await Client.new_established()
+        await client2.write(GET_MEMPOOL)
+        mempool_message = await client2.read_dict()
+
+        self.assertEqual("mempool", mempool_message["type"])
+        self.assertIn("e623a4405a4903565577697b15d4b0dcf20afff645c7c3a5e4f97a9724b54f90", mempool_message["txids"])
+        self.assertIn("8945cf9d0f04265276e60034f763d940a8956654faba9122496d89414676d3ac", mempool_message["txids"])
+
+        await client2.close()
+
+        cb_tx3_message = {"object": {"height": 3, "outputs": [
+            {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f", "value": 50000000000000}],
+                                     "type": "transaction"}, "type": "object"}
+
+        await client1.write_dict(cb_tx3_message)
+
+        block3_message = {
+            "object": {"T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1674429556,
+                       "miner": "crdm", "nonce": "000000000000000000000000000000000000000000000000000000a00069bd10",
+                       "note": "Valid third block, including transactions 2 and 4",
+                       "previd": "000000020495925bf1cae664f5db85899fe32bb50557681eabbd108c895eecd3",
+                       "txids": ["6ec7c578197d002e40c3df5f1b27d368b99d8d3356a2ffbddeff1a958b696a7c",
+                                 "e623a4405a4903565577697b15d4b0dcf20afff645c7c3a5e4f97a9724b54f90",
+                                 "8945cf9d0f04265276e60034f763d940a8956654faba9122496d89414676d3ac"], "type": "block"},
+            "type": "object"}
+
+        await client1.write_dict(block3_message)
+
+        client2 = await Client.new_established()
+        await client2.write(GET_CHAINTIP)
+        chaintip_message = await client2.read_dict()
+
+        # Assert 2
+        self.assertEqual("chaintip", chaintip_message["type"])
+        self.assertEqual("000000004bd6c055c8c5c02f4a268875abcc1efca17f0011d49a2ffd87eb89de",
+                         chaintip_message["blockid"])
+
+        await client2.write(GET_MEMPOOL)
+        mempool_message = await client2.read_dict()
+
+        self.assertEqual("mempool", mempool_message["type"])
+        self.assertEqual([], mempool_message["txids"])
+
+        await client2.close()
+
+        block3_fork_message = {
+            "object": {"T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1674422927,
+                       "miner": "crdm", "nonce": "00000000000000000000000000000000000000000000000000000000224fe21e",
+                       "note": "Valid third block, including transaction 3",
+                       "previd": "000000020495925bf1cae664f5db85899fe32bb50557681eabbd108c895eecd3",
+                       "txids": ["6ec7c578197d002e40c3df5f1b27d368b99d8d3356a2ffbddeff1a958b696a7c",
+                                 "72f479f8e100d06ac823567d334407663215c871c0ff6b543be4a16ff0075ca7"], "type": "block"},
+            "type": "object"}
+
+        await client1.write_dict(block3_fork_message)
+
+        cb_tx4_message = {"object": {"height": 4, "outputs": [
+            {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f", "value": 50000000000000}],
+                                     "type": "transaction"}, "type": "object"}
+
+        await client1.write_dict(cb_tx4_message)
+
+        # causes a chain reorganization
+        block4_fork_message = {
+            "object": {"T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1674423221,
+                       "miner": "crdm", "nonce": "00000000000000000000000000000000000000000000000000000000b6fbd48c",
+                       "note": "Valid fourth block",
+                       "previd": "000000012b5b5eb1d51c85ce4829ef19af4993aef41fe9c722f2f6e108445131",
+                       "txids": ["49696a0b0aed0c8b992684331db37d255775595de12de72c8757dc473c7a323d"], "type": "block"},
+            "type": "object"}
+
+        await client1.write_dict(block4_fork_message)
+
+        client2 = await Client.new_established()
+        await client2.write(GET_CHAINTIP)
+        chaintip_message = await client2.read_dict()
+
+        # Assert 3
+        self.assertEqual("chaintip", chaintip_message["type"])
+        self.assertEqual("000000024aced733ea96ae952e3c689fc60e3672e23c66002de2e18b6fbd9842",
+                         chaintip_message["blockid"])
+
+        await client2.write(GET_MEMPOOL)
+        mempool_message = await client2.read_dict()
+
+        self.assertEqual("mempool", mempool_message["type"])
+        self.assertEqual(["8945cf9d0f04265276e60034f763d940a8956654faba9122496d89414676d3ac"],
+                         mempool_message["txids"])
+
+        await client2.close()
+        await client1.close()
