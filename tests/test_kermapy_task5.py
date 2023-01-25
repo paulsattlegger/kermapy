@@ -596,6 +596,64 @@ class Task5TestCase(KermaTestCase):
         await client1.close()
         await client2.close()
 
+    async def test_mempoolContainsTransactionFromOldChain_2(self):
+        client1 = await Client.new_established()
+        client2 = await Client.new_established()
+        await self.append_block1(client1)
+        await self.append_block2(client1)
+
+        await client1.write(GET_CHAINTIP)
+        chaintip_response1 = await client1.read_dict()
+        self.assertIn("000000021dc4cfdcd0970084949f94da17f97504e1cc3e354851bb4768842b57", chaintip_response1['blockid'])
+
+        await client1.write(GET_MEMPOOL)
+        mempool_response1 = await client1.read_dict()
+        self.assertEqual(0, len(mempool_response1['txids']))
+
+        # References first block of old chain
+        second_chain_second_block_message = {
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000",
+                "created": 1674678832,
+                "miner": "Kermars",
+                "nonce": "000000000000000000000000000000000000000000000000124924924db6b4f1",
+                "note": "Second block of second chain",
+                "previd": "0000000108bdb42de5993bcf5f7d92557585dd6abfe9fb68e796518fe7f2ed2e",
+                "txids": [],
+                "type": "block"
+            },
+            "type": "object"
+        }
+
+        await client1.write_dict(second_chain_second_block_message)
+        await client1.readline()
+
+        second_chain_third_block_message = {
+            "T": "00000002af000000000000000000000000000000000000000000000000000000",
+            "created": 1674678985,
+            "miner": "Kermars",
+            "nonce": "00000000000000000000000000000000000000000000000012492492518d9027",
+            "note": "Third block of second chain",
+            "previd": "000000004c740878f914599e284037b37c9d19fe19678d54d1279e05da048817",
+            "txids": [],
+            "type": "block"
+        }
+
+        await client2.write_tx(second_chain_third_block_message)
+        # Read ihaveobject
+        await client1.read_dict()
+
+        await client1.write(GET_CHAINTIP)
+        chaintip_response = await client1.read_dict()
+        self.assertIn("000000019b0a85191bf04d3f400ef9267164b8011ea9514e44598f697a85ef54", chaintip_response['blockid'])
+
+        await client1.write(GET_MEMPOOL)
+        mempool_response = await client1.read_dict()
+        self.assertIn("7ef80f2da40b3f681a5aeb7962731beddccea25fa51e6e7ae6fbce8a58dbe799", mempool_response['txids'][0])
+
+        await client1.close()
+        await client2.close()
+
     async def test_mempoolMattermost(self):
         client1 = await Client.new_established()
 
