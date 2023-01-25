@@ -173,7 +173,11 @@ class Node:
                     object_id = objects.Objects.id(obj)
                     if object_id not in self._objs:
                         if obj["type"] == "transaction":
-                            self.validate_transaction(obj)
+                            try:
+                                self.validate_transaction(obj)
+                            except transaction_validation.InvalidTransaction as e:
+                                await conn.write_error(str(e))
+                                return
                             self._objs.put_object(obj)
                             if "height" not in obj:
                                 self._mempool.add_tx(self._objs.id(obj))
@@ -270,12 +274,8 @@ class Node:
             raise TaskError
 
     def validate_transaction(self, transaction: dict) -> transaction_validation.TransactionMetadata:
-        try:
-            return transaction_validation.validate_transaction(
-                transaction, self._objs)
-        except transaction_validation.InvalidTransaction as e:
-            logging.warning("Found invalid tx")
-            raise ProtocolError(str(e))
+        return transaction_validation.validate_transaction(
+            transaction, self._objs)
 
     async def resolve_object(self, object_id: str):
         event = self._objs.event_for(object_id)

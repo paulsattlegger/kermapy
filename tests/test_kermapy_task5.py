@@ -759,3 +759,30 @@ class Task5TestCase(KermaTestCase):
 
         await client2.close()
         await client1.close()
+
+    async def test_invalidTransaction_shouldSendErrorAndNotCloseConnection(self):
+        client1 = await Client.new_established()
+        await self.append_block1(client1)
+
+        invalid_transaction = {
+            "inputs": [{
+                "outpoint": {
+                    "index": 0,
+                    "txid": '4a7f4fb59ee4b3b2f940cf0efb6a09d9b74e8f30f9f8cc381e77fe8f69e996e2'
+                },
+                "sig": '49cc4f9a1fb9d600a7debc99150e7909274c8c74edd7ca183626dfe49eb4aa21c6ff0e4c5f0dc2a328ad6b8ba10bf7169d5f42993a94bf67e13afa943b749c0b'
+            },
+            ],
+            "outputs": [{
+                "pubkey": "4a7f4fb59ee4b3b2f940cf0efb6a09d9b74e8f30f9f8cc381e77fe8f69e996e2",
+                "value": 49000000000000}
+            ],
+            "type": "transaction"
+        }
+
+        error_response = await client1.write_tx(invalid_transaction)
+        self.assertIn("error", error_response)
+
+        # connection stays alive
+        await client1.write(GET_CHAINTIP)
+        self.assertIsNotNone(await client1.read_dict())
