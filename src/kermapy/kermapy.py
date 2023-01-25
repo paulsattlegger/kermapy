@@ -7,7 +7,7 @@ from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
 from org.webpki.json.Canonicalize import canonicalize
-from . import config, messages, objects, peers, schemas, transaction_validation, utxo
+from . import config, messages, objects, peers, schemas, transaction_validation, utxo, mempool
 
 
 class ProtocolError(Exception):
@@ -56,7 +56,7 @@ class Connection:
 
 
 class Node:
-    def __init__(self, listen_addr: str, storage_path: str, timeout: float = 5) -> None:
+    def __init__(self, listen_addr: str, storage_path: str, timeout: float = 300) -> None:
         self._server = None
         self._listen_addr: str = listen_addr
         self._peers: peers.Peers = peers.Peers(storage_path)
@@ -66,6 +66,8 @@ class Node:
         self._background_tasks: set = set()
         self._objs: objects.Objects = objects.Objects(storage_path)
         self._timeout = timeout
+        self._mempool = mempool.Mempool(self._objs)
+        self._mempool.init()
 
     async def start_server(self):
         self._server = await asyncio.start_server(self.handle_connection, *self._listen_addr.rsplit(":", 1),
@@ -171,11 +173,32 @@ class Node:
                     object_id = objects.Objects.id(obj)
                     if object_id not in self._objs:
                         if obj["type"] == "transaction":
-                            self.validate_transaction(obj)
+                            try:
+                                self.validate_transaction(obj)
+                            except transaction_validation.InvalidTransaction as e:
+                                await conn.write_error(str(e))
+                                return
                             self._objs.put_object(obj)
+                            if "height" not in obj:
+                                self._mempool.add_tx(self._objs.id(obj))
                         elif obj["type"] == "block":
                             utxo_set = await self.validate_block(obj)
-                            self._objs.put_block(obj, utxo_set)
+
+                            if obj["previd"]:
+                                height = self._objs.height(obj["previd"]) + 1
+                            else:
+                                height = 0
+
+                            new_chaintip = False
+                            current_chaintip_id = self._objs.chaintip()
+
+                            if not current_chaintip_id or self._objs.height(current_chaintip_id) < height:
+                                new_chaintip = True
+
+                            self._objs.put_block(obj, utxo_set, height, new_chaintip)
+
+                            if new_chaintip:
+                                self._mempool.handle_chaintip_change()
                         logging.info(
                             f"Saved object: {obj} with object ID: {object_id}")
                         self.broadcast({
@@ -225,16 +248,22 @@ class Node:
                             "objectid": block_id
                         })
                 case "getmempool":
-                    # Method for getting the mempool
-                    if False:
+                    logging.info("Received a 'getmempool' message, even though no txids been in the mempool yet")
+                    txs_in_mempool = self._mempool.get_pending()
+                    if len(txs_in_mempool) > 0:
+                        await conn.write_message({
+                            "type": "mempool",
+                            "txids": txs_in_mempool
+                        })
+                    else:
                         await conn.write_message({
                             "type": "mempool",
                             "txids": []
                         })
-                    else:
-                        logging.info("Received a 'getmempool' message, even though no txids been in the mempool yet")
                 case "mempool":
-                    await self.get_objects(message["txids"])
+                    txids = message["txids"]
+                    if len(txids) > 0:
+                        await self.get_objects(txids)
                 case "hello":
                     raise ProtocolError(
                         "Received a second 'hello' message, even though handshake is completed")
@@ -245,12 +274,8 @@ class Node:
             raise TaskError
 
     def validate_transaction(self, transaction: dict) -> transaction_validation.TransactionMetadata:
-        try:
-            return transaction_validation.validate_transaction(
-                transaction, self._objs)
-        except transaction_validation.InvalidTransaction as e:
-            logging.warning("Found invalid tx")
-            raise ProtocolError(str(e))
+        return transaction_validation.validate_transaction(
+            transaction, self._objs)
 
     async def resolve_object(self, object_id: str):
         event = self._objs.event_for(object_id)
