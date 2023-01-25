@@ -538,11 +538,14 @@ class Task5TestCase(KermaTestCase):
         second_chain_first_block_message = {
             "object": {
                 "T": "00000002af000000000000000000000000000000000000000000000000000000",
-                "created": 1624219100, "miner": "SneakyDude",
-                "nonce": "0000000000000000000000000000000000000000000000005000000028d1f901",
+                "created": 1674677100,
+                "miner": "Kermars",
+                "nonce": "000000000000000000000000000000000000000000000000b6db6db6e5bbec05",
                 "note": "First block of second chain",
                 "previd": "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-                "txids": [], "type": "block"
+                "txids": [
+                    "2a9458a2e75ed8bd0341b3cb2ab21015bbc13f21ea06229340a7b2b75720c4df"
+                ], "type": "block"
             },
             "type": "object"
         }
@@ -553,12 +556,12 @@ class Task5TestCase(KermaTestCase):
         second_chain_second_block_message = {
             "object": {
                 "T": "00000002af000000000000000000000000000000000000000000000000000000",
-                "created": 1674580127,
+                "created": 1674677590,
                 "miner": "Kermars",
-                "nonce": "0000000000000000000000000000000000000000000000000000000003093f36",
+                "nonce": "000000000000000000000000000000000000000000000000924924925e868b05",
                 "note": "Second block of second chain",
-                "previd": "0000000107ed1ee160e589214b48e80359d801c4226b69bebd39da8b65c6e83e",
-                "txids": ["73231cc901774ddb4196ee7e9e6b857b208eea04aee26ced038ac465e1e706d2"],
+                "previd": "0000000148a19a329e1840b8438bfc443a54f8899106773027ae2a1022bf9f83",
+                "txids": [],
                 "type": "block"
             },
             "type": "object"
@@ -569,11 +572,11 @@ class Task5TestCase(KermaTestCase):
 
         second_chain_third_block_message = {
             "T": "00000002af000000000000000000000000000000000000000000000000000000",
-            "created": 1674580458,
+            "created": 1674678085,
             "miner": "Kermars",
-            "nonce": "000000000000000000000000000000000000000000000000a000000008405d72",
+            "nonce": "0000000000000000000000000000000000000000000000004924924925428fd1",
             "note": "Third block of second chain",
-            "previd": "000000012399208d1bc2bbf8a4ff3d4b3a0f175d59d583ba0816e4bc3122df46",
+            "previd": "0000000049627118d72d1a34d98c2c46a41bf54b958f545de95db6187103f2c0",
             "txids": [],
             "type": "block"
         }
@@ -584,7 +587,7 @@ class Task5TestCase(KermaTestCase):
 
         await client1.write(GET_CHAINTIP)
         chaintip_response = await client1.read_dict()
-        self.assertIn("000000023c64f148c39b0ced8d00e9e8f531e3b8d82da0614e2b4e75411d9a29", chaintip_response['blockid'])
+        self.assertIn("000000003903068e4fef93ddcb7b4506dc15965dc41de7f854f510820e7aa0dd", chaintip_response['blockid'])
 
         await client1.write(GET_MEMPOOL)
         mempool_response = await client1.read_dict()
