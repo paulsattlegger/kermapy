@@ -100,24 +100,23 @@ class Mempool:
                 return
 
             self._chain_block_list.clear()
-            self._chain_block_list.append(self._chaintip_id)
             self._utxo_tmp = self._objs.utxo(self._chaintip_id)
 
             self._height = self._objs.height(self._chaintip_id)
 
-            chaintip = self._objs.get(self._chaintip_id)
+            block_id = self._chaintip_id
 
-            prev_block_id = chaintip["previd"]
-
-            while prev_block_id is not None:
-                tx_ids = chaintip["txids"]
+            # Add all transactions of chain to mempool
+            while block_id is not None:
+                block = self._objs.get(block_id)
+                tx_ids = block["txids"]
 
                 for tx_id in tx_ids:
                     self._storage.put(tx_id, MempoolState.CHAIN)
 
-                self._chain_block_list.append(prev_block_id)
+                self._chain_block_list.append(block_id)
 
-                prev_block_id = self._objs.get(prev_block_id)["previd"]
+                block_id = block["previd"]
 
         except KeyError:
             pass
