@@ -2,7 +2,6 @@ import asyncio
 import json
 import shutil
 import tempfile
-import unittest
 from unittest import IsolatedAsyncioTestCase
 
 from src.kermapy.kermapy import Node
@@ -82,4 +81,3 @@ class KermaTestCase(IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self._node.shutdown()
         await asyncio.gather(*background_tasks, return_exceptions=True)
-

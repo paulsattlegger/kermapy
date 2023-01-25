@@ -138,14 +138,13 @@ class Task5TestCase(KermaTestCase):
                     "txid": txid
                 },
                 "sig": None
-            },
-                {
-                    "outpoint": {
-                        "index": 0,
-                        "txid": txid
-                    },
-                    "sig": None
+            }, {
+                "outpoint": {
+                    "index": 0,
+                    "txid": txid
                 },
+                "sig": None
+            },
             ],
             "outputs": [{
                 "pubkey": "4a7f4fb59ee4b3b2f940cf0efb6a09d9b74e8f30f9f8cc381e77fe8f69e996e2",
@@ -270,14 +269,13 @@ class Task5TestCase(KermaTestCase):
                     "txid": txid1
                 },
                 "sig": None
-            },
-                {
-                    "outpoint": {
-                        "index": 0,
-                        "txid": txid2
-                    },
-                    "sig": None
+            }, {
+                "outpoint": {
+                    "index": 0,
+                    "txid": txid2
                 },
+                "sig": None
+            },
             ],
             "outputs": [{
                 "pubkey": "4a7f4fb59ee4b3b2f940cf0efb6a09d9b74e8f30f9f8cc381e77fe8f69e996e2",
@@ -598,9 +596,12 @@ class Task5TestCase(KermaTestCase):
     async def test_mempoolMattermost(self):
         client1 = await Client.new_established()
 
-        cb_tx1_message = {"object": {"height": 1, "outputs": [
-            {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f", "value": 50000000000000}],
-                                     "type": "transaction"}, "type": "object"}
+        cb_tx1_message = {"object": {
+            "height": 1, "outputs": [
+                {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f",
+                 "value": 50000000000000}],
+            "type": "transaction"
+        }, "type": "object"}
 
         await client1.write_dict(cb_tx1_message)
 
@@ -626,9 +627,15 @@ class Task5TestCase(KermaTestCase):
 
         await client1.write_dict(tx1_spending_cb_tx1_message)
 
-        cb_tx2_message = {"object": {"height": 2, "outputs": [
-            {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f", "value": 50000000000000}],
-                                     "type": "transaction"}, "type": "object"}
+        cb_tx2_message = {
+            "object": {
+                "height": 2, "outputs": [
+                    {
+                        "pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f",
+                        "value": 50000000000000}],
+                "type": "transaction"
+            }, "type": "object"
+        }
 
         await client1.write_dict(cb_tx2_message)
 
@@ -678,9 +685,15 @@ class Task5TestCase(KermaTestCase):
 
         await client2.close()
 
-        cb_tx3_message = {"object": {"height": 3, "outputs": [
-            {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f", "value": 50000000000000}],
-                                     "type": "transaction"}, "type": "object"}
+        cb_tx3_message = {
+            "object": {
+                "height": 3, "outputs": [
+                    {
+                        "pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f",
+                        "value": 50000000000000}],
+                "type": "transaction"
+            }, "type": "object"
+        }
 
         await client1.write_dict(cb_tx3_message)
 
@@ -714,19 +727,28 @@ class Task5TestCase(KermaTestCase):
         await client2.close()
 
         block3_fork_message = {
-            "object": {"T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1674422927,
-                       "miner": "crdm", "nonce": "00000000000000000000000000000000000000000000000000000000224fe21e",
-                       "note": "Valid third block, including transaction 3",
-                       "previd": "000000020495925bf1cae664f5db85899fe32bb50557681eabbd108c895eecd3",
-                       "txids": ["6ec7c578197d002e40c3df5f1b27d368b99d8d3356a2ffbddeff1a958b696a7c",
-                                 "72f479f8e100d06ac823567d334407663215c871c0ff6b543be4a16ff0075ca7"], "type": "block"},
+            "object": {
+                "T": "00000002af000000000000000000000000000000000000000000000000000000", "created": 1674422927,
+                "miner": "crdm", "nonce": "00000000000000000000000000000000000000000000000000000000224fe21e",
+                "note": "Valid third block, including transaction 3",
+                "previd": "000000020495925bf1cae664f5db85899fe32bb50557681eabbd108c895eecd3",
+                "txids": ["6ec7c578197d002e40c3df5f1b27d368b99d8d3356a2ffbddeff1a958b696a7c",
+                          "72f479f8e100d06ac823567d334407663215c871c0ff6b543be4a16ff0075ca7"], "type": "block"
+            },
             "type": "object"}
 
         await client1.write_dict(block3_fork_message)
 
-        cb_tx4_message = {"object": {"height": 4, "outputs": [
-            {"pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f", "value": 50000000000000}],
-                                     "type": "transaction"}, "type": "object"}
+        cb_tx4_message = {
+            "object": {
+                "height": 4, "outputs": [
+                    {
+                        "pubkey": "deadc0de584cd512b6f43545d8e0f5825e09928bab3a54d86981c56fdf0fdf3f",
+                        "value": 50000000000000
+                    }],
+                "type": "transaction"
+            }, "type": "object"
+        }
 
         await client1.write_dict(cb_tx4_message)
 
